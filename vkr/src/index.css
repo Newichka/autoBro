@@ -1,0 +1,158 @@
+/* Основные переменные цветов для сайта */
+:root {
+  --primary-dark: #1a2639;    /* Темно-синий с оттенком серого */
+  --primary-light: #3e4a61;   /* Светлее основного темного */
+  --accent: #3563E9;          /* Яркий синий для акцента */
+  --accent-light: #6B8DFF;    /* Светло-синий акцент */
+  --neutral-dark: #2d3142;    /* Темно-серый для текста */
+  --neutral-medium: #555b6e;  /* Средне-серый для второстепенного текста */
+  --neutral-light: #f5f5f5;   /* Светло-серый для фона */
+  --highlight: #f9c784;       /* Песочный для выделения */
+  --success: #30af5b;         /* Зеленый для успешных статусов */
+  --surface: #fff;            /* Белый цвет для карточек */
+  --border-light: #eaecf0;    /* Светло-серый для границ */
+  --shadow-sm: 0 2px 6px rgba(49, 53, 59, 0.05); /* Мягкая тень */
+  --shadow-md: 0 8px 18px rgba(49, 53, 59, 0.1); /* Средняя тень */
+}
+
+/* Градиенты */
+.bg-gradient-primary {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary-light));
+}
+
+.bg-gradient-accent {
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+}
+
+/* Переопределение цветов Bootstrap */
+.btn-primary {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+.btn-primary:hover, 
+.btn-primary:focus {
+  background-color: var(--accent-light);
+  border-color: var(--accent-light);
+}
+
+.bg-primary {
+  background-color: var(--primary-dark) !important;
+}
+
+.text-primary {
+  color: var(--accent) !important;
+}
+
+/* Улучшение взаимодействия */
+.hover-opacity:hover {
+  opacity: 0.85;
+  transition: all 0.3s ease;
+}
+
+/* Улучшения карточек */
+.card {
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.car-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.car-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-md);
+}
+
+.hover-shadow:hover {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Изображения автомобилей */
+.car-img-container {
+  overflow: hidden;
+  position: relative;
+}
+
+.car-img-container img {
+  transition: transform 0.5s ease;
+}
+
+.car-img-container:hover img {
+  transform: scale(1.05);
+}
+
+/* Значки характеристик автомобиля */
+.spec-card {
+  transition: all 0.3s ease;
+  border: 1px solid var(--border-light);
+  background-color: rgba(245, 245, 245, 0.5);
+}
+
+.spec-card:hover {
+  background-color: rgba(53, 99, 233, 0.08);
+  border-color: rgba(53, 99, 233, 0.2);
+}
+
+/* Анимации для кнопок */
+.btn {
+  transition: all 0.25s ease;
+}
+
+/* Пульсирующая анимация для цены */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.price-pulse {
+  animation: pulse 2s infinite;
+}
+
+/* Стилизация форм */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--accent-light);
+  box-shadow: 0 0 0 0.2rem rgba(53, 99, 233, 0.25);
+}
+
+/* Стилизация выпадающих списков */
+.filter-item.active,
+.filter-item:hover {
+  background-color: rgba(53, 99, 233, 0.1);
+}
+
+.filter-check i {
+  color: var(--accent) !important;
+}
+
+.active-dropdown {
+  border-color: var(--accent-light) !important;
+  box-shadow: 0 0 0 0.2rem rgba(53, 99, 233, 0.25) !important;
+}
+
+/* Адаптивные улучшения */
+@media (max-width: 768px) {
+  .car-card:hover {
+    transform: translateY(-3px);
+  }
+}
+
+/* Скругленные бейджи */
+.badge.rounded-pill {
+  padding: 0.5em 0.8em;
+  font-weight: 500;
+}
+
+/* Стиль для меток "Новое" */
+.badge.condition-new {
+  background-color: var(--success);
+  color: white;
+}
