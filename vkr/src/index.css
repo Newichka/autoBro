@@ -156,3 +156,14 @@
   background-color: var(--success);
   color: white;
 }
+
+
+
+/* Style for dropdowns to ensure they are on top */
+.z-index-dropdown {
+  z-index: 1050; /* Ensure this is higher than other elements */
+  /* position: absolute; is already applied via Bootstrap class */
+  /* background-color: white; is already applied via Bootstrap class */
+  /* box-shadow: var(--shadow-sm); is already applied via Bootstrap class */
+  /* border-radius: var(--bs-border-radius); is already applied via Bootstrap class */
+}

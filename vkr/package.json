@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@types/crypto-js": "^4.2.2",
-    "axios": "^1.6.8",
+    "axios": "^1.9.0",
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
     "cors": "^2.8.5",

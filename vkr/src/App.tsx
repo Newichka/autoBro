@@ -16,6 +16,7 @@ const App: React.FC = () => {
       <Router>
         <div>
           <Header />
+          <div className='container'>
           <Routes>
             <Route path="/" element={<MainContainer />} />
             <Route path="/admin" element={
@@ -30,6 +31,7 @@ const App: React.FC = () => {
             } />
             <Route path="*" element={<MainContainer />} />
           </Routes>
+        </div>
         </div>
       </Router>
     </AuthProvider>
