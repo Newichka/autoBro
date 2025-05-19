@@ -208,8 +208,148 @@ public class CarService {
     @Transactional
     public CarDTO createCar(CarDTO carDTO) {
         Car car = new Car();
-        updateCarFromDTO(car, carDTO);
+        
+        // Обновляем базовые поля
+        car.setMake(carDTO.getMake());
+        car.setModel(carDTO.getModel());
+        car.setYear(validateYear(carDTO.getYear()));
+        car.setPrice(validatePrice(carDTO.getPrice()));
+        car.setMileage(validateMileage(carDTO.getMileage()));
+
+        // BodyType
+        if (carDTO.getBodyTypeName() != null) {
+            BodyType bodyType = bodyTypeRepository.findByName(carDTO.getBodyTypeName())
+                .orElseGet(() -> {
+                    BodyType newBodyType = new BodyType();
+                    newBodyType.setName(carDTO.getBodyTypeName());
+                    return bodyTypeRepository.save(newBodyType);
+                });
+            car.setBodyType(bodyType);
+        }
+
+        // Color с поддержкой hex-кода
+        if (carDTO.getColorName() != null) {
+            Color color = colorRepository.findByName(carDTO.getColorName())
+                .orElseGet(() -> {
+                    Color newColor = new Color();
+                    newColor.setName(carDTO.getColorName());
+                    // Устанавливаем hex-код, если он предоставлен
+                    if (carDTO.getColorHexCode() != null && !carDTO.getColorHexCode().isEmpty()) {
+                        newColor.setHexCode(carDTO.getColorHexCode());
+                    }
+                    return colorRepository.save(newColor);
+                });
+            
+            // Обновляем hex-код существующего цвета, если он предоставлен
+            if (carDTO.getColorHexCode() != null && !carDTO.getColorHexCode().isEmpty() && 
+                (color.getHexCode() == null || !color.getHexCode().equals(carDTO.getColorHexCode()))) {
+                color.setHexCode(carDTO.getColorHexCode());
+                colorRepository.save(color);
+            }
+            
+            car.setColor(color);
+        }
+
+        // Строковые поля вместо связанных сущностей
+        car.setCarCondition(carDTO.getCondition());
+        car.setLocation(carDTO.getLocation());
+        car.setMainPhotoUrl(carDTO.getMainPhotoUrl());
+        
+        // Сначала сохраняем автомобиль
         car = carRepository.save(car);
+        
+        // Затем обрабатываем технические характеристики
+        if (carDTO.getTechnicalSpec() != null) {
+            try {
+                TechnicalSpec spec = new TechnicalSpec();
+                spec.setCar(car); // Устанавливаем связь с сохраненным автомобилем
+                
+                TechnicalSpecDTO specDTO = carDTO.getTechnicalSpec();
+                
+                // Обновляем все поля, которые присутствуют в DTO
+                if (specDTO.getFuelType() != null) {
+                    spec.setFuelType(specDTO.getFuelType());
+                }
+                if (specDTO.getEngineVolume() != null) {
+                    spec.setEngineVolume(specDTO.getEngineVolume());
+                }
+                if (specDTO.getHorsePower() != null) {
+                    spec.setHorsePower(specDTO.getHorsePower());
+                }
+                if (specDTO.getDriveType() != null) {
+                    spec.setDriveType(specDTO.getDriveType());
+                }
+                if (specDTO.getTransmissionType() != null) {
+                    spec.setTransmissionType(specDTO.getTransmissionType());
+                }
+                if (specDTO.getGears() != null) {
+                    spec.setGears(specDTO.getGears());
+                }
+                
+                // Добавляем информацию о двигателе и трансмиссии
+                StringBuilder engineInfo = new StringBuilder();
+                if (specDTO.getFuelType() != null) {
+                    engineInfo.append(specDTO.getFuelType()).append(" ");
+                }
+                if (specDTO.getEngineVolume() != null) {
+                    engineInfo.append(specDTO.getEngineVolume()).append("L ");
+                }
+                if (specDTO.getHorsePower() != null) {
+                    engineInfo.append(specDTO.getHorsePower()).append("HP");
+                }
+                spec.setEngineInfo(engineInfo.toString().trim());
+                
+                StringBuilder transmissionInfo = new StringBuilder();
+                if (specDTO.getTransmissionType() != null) {
+                    transmissionInfo.append(specDTO.getTransmissionType());
+                }
+                spec.setTransmissionInfo(transmissionInfo.toString().trim());
+                
+                // Сохраняем технические характеристики
+                spec = technicalSpecRepository.save(spec);
+                car.setTechnicalSpec(spec);
+                
+                // Обновляем автомобиль с установленными техническими характеристиками
+                car = carRepository.save(car);
+            } catch (Exception e) {
+                // Логируем ошибку, но продолжаем работу
+                System.err.println("Ошибка при обновлении технических характеристик: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        
+        // SafetyFeatures
+        if (carDTO.getSafetyFeatures() != null && !carDTO.getSafetyFeatures().isEmpty()) {
+            List<SafetyFeature> safetyFeatures = new ArrayList<>();
+            for (String featureName : carDTO.getSafetyFeatures()) {
+                SafetyFeature feature = safetyFeatureRepository.findByName(featureName)
+                    .orElseGet(() -> {
+                        SafetyFeature newFeature = new SafetyFeature();
+                        newFeature.setName(featureName);
+                        return safetyFeatureRepository.save(newFeature);
+                    });
+                safetyFeatures.add(feature);
+            }
+            car.setSafetyFeatures(safetyFeatures);
+            car = carRepository.save(car);
+        }
+
+        // Equipment
+        if (carDTO.getEquipment() != null && !carDTO.getEquipment().isEmpty()) {
+            List<Equipment> equipment = new ArrayList<>();
+            for (String equipmentName : carDTO.getEquipment()) {
+                Equipment equip = equipmentRepository.findByName(equipmentName)
+                    .orElseGet(() -> {
+                        Equipment newEquip = new Equipment();
+                        newEquip.setName(equipmentName);
+                        return equipmentRepository.save(newEquip);
+                    });
+                equipment.add(equip);
+            }
+            car.setEquipment(equipment);
+            car = carRepository.save(car);
+        }
+        
         return convertToDTO(car);
     }
 
@@ -321,14 +461,26 @@ public class CarService {
             car.setBodyType(bodyType);
         }
 
-        // Color
+        // Color с поддержкой hex-кода
         if (dto.getColorName() != null) {
             Color color = colorRepository.findByName(dto.getColorName())
                 .orElseGet(() -> {
                     Color newColor = new Color();
                     newColor.setName(dto.getColorName());
+                    // Устанавливаем hex-код, если он предоставлен
+                    if (dto.getColorHexCode() != null && !dto.getColorHexCode().isEmpty()) {
+                        newColor.setHexCode(dto.getColorHexCode());
+                    }
                     return colorRepository.save(newColor);
                 });
+            
+            // Обновляем hex-код существующего цвета, если он предоставлен
+            if (dto.getColorHexCode() != null && !dto.getColorHexCode().isEmpty() && 
+                (color.getHexCode() == null || !color.getHexCode().equals(dto.getColorHexCode()))) {
+                color.setHexCode(dto.getColorHexCode());
+                colorRepository.save(color);
+            }
+            
             car.setColor(color);
         }
 
@@ -535,9 +687,10 @@ public class CarService {
             }
         }
         
-        // Обработка Color
+        // Обработка Color с поддержкой hex-кода
         if (car.getColor() != null) {
             dto.setColorName(car.getColor().getName());
+            dto.setColorHexCode(car.getColor().getHexCode());
         }
         
         // Вместо связи с CarCondition, используем строковое поле

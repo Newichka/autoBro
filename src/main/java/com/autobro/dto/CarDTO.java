@@ -17,6 +17,7 @@ public class CarDTO {
     private String engineInfo;
     private String transmissionInfo;
     private String colorName;
+    private String colorHexCode; // Добавлено поле для hex-кода цвета
     private String condition;
     private String location;
     private String mainPhotoUrl;
