@@ -1,7 +1,6 @@
 import axios from 'axios';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Filter from './Filter';
-import { parseCars } from '../services/AutoRuParser';
 
 interface Car {
   id: number | string;
@@ -343,67 +342,18 @@ const MainContainer: React.FC = () => {
     return `https://via.placeholder.com/600x400/${randomColor}/FFFFFF?text=${placeholderText}`;
   };
 
-  const fetchExternalCars = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setParserErrorOccurred(false);
-    try {
-      const parsedData = await parseCars("https://www.avtogermes.ru/second_hand/" );
-      const mappedCars: Car[] = parsedData.map((pCar, index) => {
-        // Создаем заглушку с названием модели
-        const placeholderUrl = generatePlaceholderUrl(
-          pCar.make || 'Неизвестно', 
-          pCar.model || 'Неизвестно', 
-          pCar.year || 0
-        );
-        
-        return {
-          id: `ext-${index}-${Date.now()}`,
-          make: pCar.make || 'Неизвестно',
-          model: pCar.model || 'Неизвестно',
-          year: pCar.year || 0,
-          price: pCar.price || 0,
-          mileage: pCar.mileage,
-          fuelType: pCar.engine?.split(',')[0]?.trim(),
-          color: pCar.color,
-          engineInfo: pCar.engine,
-          // Используем заглушку, если imageUrl отсутствует
-          mainPhotoUrl: pCar.imageUrl || placeholderUrl,
-          // Добавляем массив с заглушками для галереи
-          allPhotoUrls: pCar.imageUrl ? [pCar.imageUrl, placeholderUrl] : [placeholderUrl],
-          location: pCar.city,
-          bodyTypeName: pCar.bodyType, // Assuming parser provides this
-          transmissionInfo: pCar.transmission, // Assuming parser provides this
-          technicalSpec: {
-              fuelType: pCar.engine?.split(',')[0]?.trim() || 'Неизвестно',
-              driveType: pCar.drive || 'Неизвестно', // Assuming parser provides this
-              transmissionType: pCar.transmission || 'Неизвестно', // Assuming parser provides this
-              horsePower: pCar.horsePower,
-          }
-        };
-      });
-      setAllExternalCars(mappedCars);
-      applyFiltersToExternalCars(mappedCars, filters);
-      // Pagination for external cars was already here, it's fine.
-    } catch (err) {
-      console.error('Ошибка при парсинге автомобилей:', err);
-      setError('Не удалось загрузить автомобили с внешнего ресурса. Показываются данные из нашей базы.');
-      setParserErrorOccurred(true);
-      setActiveDataSource('local'); 
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, applyFiltersToExternalCars]);
+  // Функция fetchExternalCars удалена, так как парсер больше не используется
 
   useEffect(() => {
     if (activeDataSource === 'local') {
         fetchLocalCars(filters);
-    } else if (allExternalCars.length > 0) { // If external cars already fetched, just re-apply filters
-        applyFiltersToExternalCars(allExternalCars, filters);
-    } else { // Fetch external if not already fetched
-        fetchExternalCars();
+    } else {
+        // Внешний источник данных удален, показываем сообщение
+        setError('Функция парсинга внешнего источника была удалена. Показываются данные из нашей базы.');
+        setActiveDataSource('local');
+        fetchLocalCars(filters);
     }
-  }, [filters, activeDataSource, fetchLocalCars, fetchExternalCars, allExternalCars, applyFiltersToExternalCars]);
+  }, [filters, activeDataSource, fetchLocalCars]);
 
   const handleFilterChange = (name: string, value: any) => {
     setFilters(prevFilters => ({
@@ -638,8 +588,7 @@ const MainContainer: React.FC = () => {
                 className={`btn btn-sm ${activeDataSource === 'external' ? 'btn-primary' : 'btn-outline-primary'}`}
                 onClick={() => handleDataSourceChange('external')}
               >
-                <img className='fs-1' src='https://www.avtogermes.ru/img/svg/ag_logo_color.svg'></img>
-                avtogermes
+                можем привезти
               </button>
             </div>
             <div className="d-flex align-items-center">

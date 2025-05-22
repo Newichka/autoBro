@@ -403,13 +403,16 @@ public class CarService {
                 Path filePath = uploadDir.resolve(filename);
                 Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
+                // Формируем публичный URL для доступа к изображению
+                String publicUrl = "/uploads/cars/" + id + "/" + filename;
+
                 // Создаем запись в базе
                 Photo photo = new Photo();
                 photo.setCar(car);
-                photo.setUrl(filePath.toString());
+                photo.setUrl(publicUrl);
 
                 photoRepository.save(photo);
-                uploadedPhotos.add(filePath.toString());
+                uploadedPhotos.add(publicUrl);
 
             } catch (IOException e) {
                 throw new RuntimeException("Failed to store file", e);
