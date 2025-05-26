@@ -1,20 +1,35 @@
 import React, { useState } from 'react';
 import { useAuth } from '../firebase/AuthContext';
 import AddCarModal from './AddCarModal';
+import CarListModal from './CarListModal';
 
 const AdminPanel: React.FC = () => {
   const { currentUser } = useAuth();
   const [isAddCarModalOpen, setIsAddCarModalOpen] = useState(false);
+  const [isCarListModalOpen, setIsCarListModalOpen] = useState(false);
   const [lastAddedCar, setLastAddedCar] = useState<any>(null);
+  const [lastDeletedNotice, setLastDeletedNotice] = useState<string | null>(null);
 
   const handleAddCarClick = () => {
     setIsAddCarModalOpen(true);
+  };
+
+  const handleManageCarsClick = () => {
+    setIsCarListModalOpen(true);
   };
 
   const handleCarAdded = (car: any) => {
     setLastAddedCar(car);
     // Здесь можно добавить логику обновления списка автомобилей
     console.log('Автомобиль успешно добавлен:', car);
+  };
+
+  const handleCarDeleted = () => {
+    setLastDeletedNotice("Автомобиль успешно удален");
+    // Скрываем уведомление через 5 секунд
+    setTimeout(() => {
+      setLastDeletedNotice(null);
+    }, 5000);
   };
 
   return (
@@ -33,6 +48,13 @@ const AdminPanel: React.FC = () => {
                 </div>
               )}
               
+              {lastDeletedNotice && (
+                <div className="alert alert-success mb-4">
+                  <i className="bi bi-check-circle me-2"></i>
+                  {lastDeletedNotice}
+                </div>
+              )}
+              
               <h5 className="mt-4">Информация о пользователе</h5>
               <p>Email: {currentUser?.email}</p>
               <p>Роль: Администратор</p>
@@ -48,7 +70,7 @@ const AdminPanel: React.FC = () => {
                 </button>
                 <button 
                   className="list-group-item list-group-item-action d-flex align-items-center"
-                  onClick={handleAddCarClick}
+                  onClick={handleManageCarsClick}
                 >
                   <i className="bi bi-car-front me-3 fs-5"></i>
                   <div>
@@ -72,13 +94,20 @@ const AdminPanel: React.FC = () => {
                 </button>
               </div>
 
-              <div className="mt-4">
+              <div className="mt-4 d-flex gap-2">
                 <button 
                   className="btn btn-primary" 
                   onClick={handleAddCarClick}
                 >
                   <i className="bi bi-plus-circle me-2"></i>
                   Добавить автомобиль
+                </button>
+                <button 
+                  className="btn btn-outline-primary" 
+                  onClick={handleManageCarsClick}
+                >
+                  <i className="bi bi-list me-2"></i>
+                  Управление автомобилями
                 </button>
               </div>
             </div>
@@ -91,6 +120,13 @@ const AdminPanel: React.FC = () => {
         isOpen={isAddCarModalOpen} 
         onClose={() => setIsAddCarModalOpen(false)} 
         onCarAdded={handleCarAdded} 
+      />
+
+      {/* Модальное окно управления автомобилями */}
+      <CarListModal 
+        isOpen={isCarListModalOpen} 
+        onClose={() => setIsCarListModalOpen(false)} 
+        onCarDeleted={handleCarDeleted} 
       />
     </div>
   );

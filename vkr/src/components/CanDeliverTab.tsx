@@ -1,16 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import autoRuParser, { AutoRuCar, AutoRuParams } from '../services/AutoRuParser';
+
+// Определяем интерфейсы для данных автомобиля, основываясь на CarDTO
+interface TechnicalSpec {
+  fuelType: string;
+  engineVolume?: number;
+  horsePower?: number;
+  driveType: string;
+  transmissionType: string;
+  engineInfo?: string;
+  transmissionInfo?: string;
+  gears?: number;
+}
+
+interface Car {
+  id: number; // Добавляем ID, так как он используется в key
+  make: string;
+  model: string;
+  year: number;
+  bodyTypeName: string;
+  price: number;
+  mileage?: number;
+  engineInfo?: string; // Поле из CarDTO
+  transmissionInfo?: string; // Поле из CarDTO
+  colorName: string;
+  colorHexCode: string;
+  condition: string;
+  location: string;
+  mainPhotoUrl?: string;
+  allPhotoUrls?: string[];
+  safetyFeatures?: string[];
+  equipment?: string[];
+  technicalSpec: TechnicalSpec;
+}
 
 // Интерфейс для пропсов компонента
 interface CanDeliverTabProps {
   filters: any; // Используем тип из MainContainer
   viewMode: 'grid' | 'list';
-  onShowDetails: (car: AutoRuCar) => void;
+  onShowDetails: (car: Car) => void; // Обновляем тип на Car
 }
 
 const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShowDetails }) => {
-  // Состояние для хранения автомобилей с Авто.ру
-  const [cars, setCars] = useState<AutoRuCar[]>([]);
+  // Состояние для хранения автомобилей с бэкенда
+  const [cars, setCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -21,64 +53,64 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
   
   // Состояние для полноэкранного просмотра
   const [fullscreenMode, setFullscreenMode] = useState<boolean>(false);
-  const [fullscreenCar, setFullscreenCar] = useState<AutoRuCar | null>(null);
+  const [fullscreenCar, setFullscreenCar] = useState<Car | null>(null);
   const [fullscreenPhotoIndex, setFullscreenPhotoIndex] = useState<number>(0);
   const [isPhotoChanging, setIsPhotoChanging] = useState<boolean>(false);
 
-  // Загрузка автомобилей с Авто.ру при изменении фильтров
+  // Загрузка автомобилей с бэкенда при изменении фильтров
   useEffect(() => {
     const fetchCars = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        // Преобразуем фильтры из формата приложения в формат для Авто.ру
-        const autoRuParams: AutoRuParams = {
-          make: filters.make,
-          model: filters.model,
-          minYear: filters.minYear,
-          maxYear: filters.maxYear,
-          minPrice: filters.minPrice,
-          maxPrice: filters.maxPrice,
-          minMileage: filters.minMileage,
-          maxMileage: filters.maxMileage,
-          bodyType: filters.bodyTypeId?.map((id: number) => {
-            // Здесь можно добавить преобразование ID в названия типов кузова
-            // Для простоты используем заглушку
-            const bodyTypeMap: Record<number, string> = {
-              1: 'Седан',
-              2: 'Хэтчбек',
-              3: 'Универсал',
-              4: 'Внедорожник',
-              5: 'Кроссовер'
-            };
-            return bodyTypeMap[id] || '';
-          }).filter((type: string) => type !== ''),
-          fuelType: filters.fuelType,
-          minHorsePower: filters.minHorsePower,
-          transmissionType: filters.transmissionType,
-          driveType: filters.driveType,
-          color: filters.colorId?.map((id: number) => {
-            // Преобразование ID в названия цветов
-            const colorMap: Record<number, string> = {
-              1: 'Черный',
-              2: 'Белый',
-              3: 'Серый',
-              4: 'Красный',
-              5: 'Синий'
-            };
-            return colorMap[id] || '';
-          }).filter((color: string) => color !== ''),
-          page: filters.page,
-          pageSize: filters.size
-        };
+        // Формируем параметры запроса из фильтров
+        const queryParams = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') {
+            // Преобразуем ключи фильтров фронтенда в ожидаемые бэкендом (если нужно)
+            // Например, bodyTypeId -> bodyTypeNames, colorId -> colorNames
+            let backendKey = key;
+            if (key === 'bodyTypeId') backendKey = 'bodyTypeNames';
+            if (key === 'colorId') backendKey = 'colorNames';
+            if (key === 'size') backendKey = 'size'; // Убедимся, что параметры пагинации передаются
+            if (key === 'page') backendKey = 'page';
+
+            if (Array.isArray(value)) {
+              value.forEach(item => queryParams.append(backendKey, item.toString()));
+            } else {
+              queryParams.append(backendKey, value.toString());
+            }
+          }
+        });
         
-        // Получаем данные с Авто.ру (через наш парсер)
-        const autoRuCars = await autoRuParser.fetchCars(autoRuParams);
-        setCars(autoRuCars);
-      } catch (err) {
-        console.error('Ошибка при загрузке автомобилей с Авто.ру:', err);
-        setError('Не удалось загрузить данные с Авто.ру');
+        // Устанавливаем размер страницы по умолчанию, если не задан
+        if (!queryParams.has('size')) {
+          queryParams.append('size', '12'); // Или другое значение по умолчанию
+        }
+
+        // Получаем данные с бэкенда
+        const response = await fetch(`/api/cars?${queryParams.toString()}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Не удалось загрузить данные автомобилей');
+        }
+        const data = await response.json();
+        
+        // Проверяем структуру ответа и извлекаем список автомобилей
+        if (data.success && data.data && data.data.content) {
+          setCars(data.data.content);
+        } else if (data.success && Array.isArray(data.data)) {
+          // Если API возвращает просто массив в data
+          setCars(data.data);
+        } else {
+          console.warn('Неожиданная структура ответа API:', data);
+          setCars([]);
+        }
+
+      } catch (err: any) {
+        console.error('Ошибка при загрузке автомобилей:', err);
+        setError(err.message || 'Не удалось загрузить данные автомобилей');
         setCars([]);
       } finally {
         setLoading(false);
@@ -89,7 +121,7 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
   }, [filters]);
 
   // Обработчики для взаимодействия с изображениями
-  const handleImageMouseEnter = (car: AutoRuCar) => {
+  const handleImageMouseEnter = (car: Car) => {
     setHoveredCarId(car.id);
     setIsHovering(true);
   };
@@ -98,7 +130,7 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
     setIsHovering(false);
   };
   
-  const handleImageMouseMove = (e: React.MouseEvent, car: AutoRuCar) => {
+  const handleImageMouseMove = (e: React.MouseEvent, car: Car) => {
     if (!car.allPhotoUrls || car.allPhotoUrls.length <= 1) return;
     
     const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -116,7 +148,7 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
   };
   
   // Обработчики для полноэкранного просмотра
-  const handleOpenFullscreen = (car: AutoRuCar, index: number = 0, e?: React.MouseEvent) => {
+  const handleOpenFullscreen = (car: Car, index: number = 0, e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
     }
@@ -141,9 +173,17 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
   };
   
   const handleChangeFullscreenPhoto = (newIndex: number) => {
+    // Проверяем fullscreenCar и fullscreenCar.allPhotoUrls перед использованием
+    if (!fullscreenCar || !fullscreenCar.allPhotoUrls) return;
+
     setIsPhotoChanging(true);
     setTimeout(() => {
-      setFullscreenPhotoIndex(newIndex);
+      // Повторная проверка внутри setTimeout для дополнительной безопасности
+      if (!fullscreenCar || !fullscreenCar.allPhotoUrls) return;
+      
+      // Убедимся, что newIndex в допустимых границах
+      const validIndex = Math.max(0, Math.min(newIndex, fullscreenCar.allPhotoUrls.length - 1));
+      setFullscreenPhotoIndex(validIndex);
       setIsPhotoChanging(false);
     }, 200);
   };
@@ -151,16 +191,19 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
   // Обработчик нажатия клавиш для навигации в полноэкранном режиме
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!fullscreenMode || !fullscreenCar || !fullscreenCar.allPhotoUrls) return;
+      // Убедимся, что fullscreenCar и allPhotoUrls существуют перед доступом к length
+      if (!fullscreenMode || !fullscreenCar || !fullscreenCar.allPhotoUrls || fullscreenCar.allPhotoUrls.length <= 1) return;
       
       if (e.key === 'Escape') {
         handleCloseFullscreen();
-      } else if (e.key === 'ArrowLeft' && fullscreenCar.allPhotoUrls.length > 1) {
+      } else if (e.key === 'ArrowLeft') {
+        // Доступ к length безопасен после проверки выше
         const newIndex = fullscreenPhotoIndex === 0 
           ? fullscreenCar.allPhotoUrls.length - 1 
           : fullscreenPhotoIndex - 1;
         handleChangeFullscreenPhoto(newIndex);
-      } else if (e.key === 'ArrowRight' && fullscreenCar.allPhotoUrls.length > 1) {
+      } else if (e.key === 'ArrowRight') {
+        // Доступ к length безопасен после проверки выше
         const newIndex = fullscreenPhotoIndex === fullscreenCar.allPhotoUrls.length - 1 
           ? 0 
           : fullscreenPhotoIndex + 1;
@@ -194,7 +237,7 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
         <div className="alert alert-danger">{error}</div>
       ) : cars.length === 0 ? (
         <div className="alert alert-info">
-          По вашему запросу не найдено автомобилей на Авто.ру. Попробуйте изменить параметры фильтрации.
+          По вашему запросу не найдено автомобилей. Попробуйте изменить параметры фильтрации.
         </div>
       ) : (
         <div className={viewMode === 'grid' ? 'row row-cols-1 row-cols-md-3 g-4' : ''}>
@@ -255,7 +298,7 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                           </div>
                         )}
                         
-                        {/* Бейдж "Можем привезти" */}
+                        {/* Бейдж "Можем привезти" - ОСТАВЛЯЕМ, так как вкладка называется CanDeliverTab */}
                         <div className="position-absolute top-0 start-0 m-2">
                           <span className="badge bg-warning text-dark rounded-pill px-3 py-2 shadow-sm">
                             <i className="bi bi-truck me-1"></i>
@@ -279,17 +322,20 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                         
                         <div className="car-specs mb-3">
                           <div className="d-flex flex-wrap gap-3">
-                            <div className="spec-item d-flex align-items-center">
-                              <i className="bi bi-speedometer2 me-2 text-muted"></i>
-                              <span>{car.mileage.toLocaleString()} км</span>
-                            </div>
+                            {car.mileage !== undefined && (
+                              <div className="spec-item d-flex align-items-center">
+                                <i className="bi bi-speedometer2 me-2 text-muted"></i>
+                                <span>{car.mileage.toLocaleString()} км</span>
+                              </div>
+                            )}
                             <div className="spec-item d-flex align-items-center">
                               <i className="bi bi-fuel-pump me-2 text-muted"></i>
                               <span>{car.technicalSpec.fuelType}</span>
                             </div>
                             <div className="spec-item d-flex align-items-center">
                               <i className="bi bi-gear me-2 text-muted"></i>
-                              <span>{car.transmissionInfo}</span>
+                              {/* Используем transmissionType из technicalSpec */}
+                              <span>{car.technicalSpec.transmissionType}</span> 
                             </div>
                           </div>
                         </div>
@@ -300,10 +346,7 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                               <i className="bi bi-geo-alt me-1"></i>
                               <span>{car.location}</span>
                             </div>
-                            <div className="source d-flex align-items-center text-muted small">
-                              <i className="bi bi-link-45deg me-1"></i>
-                              <span>Авто.ру</span>
-                            </div>
+                            {/* Удаляем указание источника "Авто.ру" */}
                           </div>
                         </div>
                       </div>
@@ -375,17 +418,20 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                       
                       <div className="car-specs mb-3">
                         <div className="d-flex flex-wrap gap-2">
-                          <div className="spec-item d-flex align-items-center">
-                            <i className="bi bi-speedometer2 me-1 text-muted"></i>
-                            <span className="small">{car.mileage.toLocaleString()} км</span>
-                          </div>
+                          {car.mileage !== undefined && (
+                            <div className="spec-item d-flex align-items-center">
+                              <i className="bi bi-speedometer2 me-1 text-muted"></i>
+                              <span className="small">{car.mileage.toLocaleString()} км</span>
+                            </div>
+                          )}
                           <div className="spec-item d-flex align-items-center">
                             <i className="bi bi-fuel-pump me-1 text-muted"></i>
                             <span className="small">{car.technicalSpec.fuelType}</span>
                           </div>
                           <div className="spec-item d-flex align-items-center">
                             <i className="bi bi-gear me-1 text-muted"></i>
-                            <span className="small">{car.transmissionInfo}</span>
+                            {/* Используем transmissionType из technicalSpec */}
+                            <span className="small">{car.technicalSpec.transmissionType}</span>
                           </div>
                         </div>
                       </div>
@@ -395,10 +441,7 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                           <i className="bi bi-geo-alt me-1"></i>
                           <span>{car.location}</span>
                         </div>
-                        <div className="source d-flex align-items-center text-muted small">
-                          <i className="bi bi-link-45deg me-1"></i>
-                          <span>Авто.ру</span>
-                        </div>
+                        {/* Удаляем указание источника "Авто.ру" */}
                       </div>
                     </div>
                   </>
@@ -422,25 +465,32 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
           onClick={handleFullscreenBackgroundClick}
         >
           <div className="position-relative" style={{ maxWidth: '90%', maxHeight: '90%' }}>
-            <img 
-              src={fullscreenCar.allPhotoUrls[fullscreenPhotoIndex]} 
-              alt={`${fullscreenCar.make} ${fullscreenCar.model}`}
-              className="img-fluid"
-              style={{
-                maxHeight: '85vh',
-                opacity: isPhotoChanging ? 0 : 1,
-                transition: 'opacity 0.2s ease'
-              }}
-            />
+            {/* Проверяем наличие allPhotoUrls перед рендерингом img */}
+            {fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 0 ? (
+              <img 
+                src={fullscreenCar.allPhotoUrls[fullscreenPhotoIndex]} 
+                alt={`${fullscreenCar.make} ${fullscreenCar.model}`}
+                className="img-fluid"
+                style={{
+                  maxHeight: '85vh',
+                  opacity: isPhotoChanging ? 0 : 1,
+                  transition: 'opacity 0.2s ease'
+                }}
+              />
+            ) : (
+              <div className="text-white">Нет доступных фото</div>
+            )}
             
-            {/* Кнопки навигации */}
-            {fullscreenCar.allPhotoUrls.length > 1 && (
+            {/* Кнопки навигации: Добавляем проверку fullscreenCar.allPhotoUrls перед доступом к length */}
+            {fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 1 && (
               <>
                 <button 
                   className="btn btn-dark position-absolute top-50 start-0 translate-middle-y rounded-circle"
                   style={{ width: '50px', height: '50px' }}
                   onClick={(e) => {
                     e.stopPropagation();
+                    // Добавляем проверку внутри обработчика
+                    if (!fullscreenCar || !fullscreenCar.allPhotoUrls) return;
                     const newIndex = fullscreenPhotoIndex === 0 
                       ? fullscreenCar.allPhotoUrls.length - 1 
                       : fullscreenPhotoIndex - 1;
@@ -454,6 +504,8 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                   style={{ width: '50px', height: '50px' }}
                   onClick={(e) => {
                     e.stopPropagation();
+                    // Добавляем проверку внутри обработчика
+                    if (!fullscreenCar || !fullscreenCar.allPhotoUrls) return;
                     const newIndex = fullscreenPhotoIndex === fullscreenCar.allPhotoUrls.length - 1 
                       ? 0 
                       : fullscreenPhotoIndex + 1;
@@ -474,8 +526,8 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
               <i className="bi bi-x-lg"></i>
             </button>
             
-            {/* Индикатор фотографий */}
-            {fullscreenCar.allPhotoUrls.length > 1 && (
+            {/* Индикатор фотографий: Добавляем проверку fullscreenCar.allPhotoUrls перед доступом к length */}
+            {fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 1 && (
               <div className="position-absolute bottom-0 start-50 translate-middle-x mb-4">
                 <div className="d-flex gap-2">
                   {fullscreenCar.allPhotoUrls.map((_, index) => (
@@ -500,3 +552,4 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
 };
 
 export default CanDeliverTab;
+
