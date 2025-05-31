@@ -1,172 +1,159 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from '../firebase/AuthContext';
 
 interface OrderModalProps {
-  show: boolean;
+  isOpen: boolean;
   onClose: () => void;
-  carId: number | string;
-  carMake: string;
-  carModel: string;
-  carYear: number;
-  carPrice: number;
+  car: any;
 }
 
-interface OrderFormData {
+interface UserData {
   fullName: string;
   phone: string;
-  email: string;
 }
 
-const OrderModal: React.FC<OrderModalProps> = ({ 
-  show, 
-  onClose, 
-  carId, 
-  carMake, 
-  carModel, 
-  carYear, 
-  carPrice 
-}) => {
-  const [formData, setFormData] = useState<OrderFormData>({
+const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, car }) => {
+  const { currentUser } = useAuth();
+  const [userData, setUserData] = useState<UserData>({
     fullName: '',
-    phone: '',
-    email: ''
+    phone: ''
   });
-  
-  const [errors, setErrors] = useState<Partial<OrderFormData>>({});
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [success, setSuccess] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const API_URL = 'http://localhost:5000/api';
+  // Загрузка данных пользователя при открытии модального окна
+  useEffect(() => {
+    if (isOpen && currentUser) {
+      fetchUserData();
+    }
+  }, [isOpen, currentUser]);
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<OrderFormData> = {};
+  // Функция для загрузки данных пользователя
+  const fetchUserData = async () => {
+    if (!currentUser) return;
     
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'ФИО обязательно для заполнения';
+    try {
+      const response = await axios.get(`http://localhost:3001/users/${currentUser.uid}`);
+      if (response.data) {
+        setUserData({
+          fullName: response.data.fullName || '',
+          phone: response.data.phone || ''
+        });
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке данных пользователя:', error);
     }
-    
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Номер телефона обязателен для заполнения';
-    } else if (!/^\+?[0-9]{10,15}$/.test(formData.phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Введите корректный номер телефона';
-    }
-    
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email обязателен для заполнения';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Введите корректный email';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
+  // Обработчик изменения полей формы
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setUserData(prev => ({
       ...prev,
       [name]: value
     }));
-    
-    // Очищаем ошибку при вводе
-    if (errors[name as keyof OrderFormData]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
-    }
   };
 
+  // Обработчик отправки формы
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser || !car) return;
     
-    if (!validateForm()) {
-      return;
-    }
-    
-    setIsSubmitting(true);
-    setSubmitError(null);
+    setLoading(true);
+    setError(null);
     
     try {
-      const response = await axios.post(`${API_URL}/orders`, {
-        ...formData,
-        carId,
-        carMake,
-        carModel,
-        carYear,
-        carPrice
+      // Сохраняем обновленные данные пользователя
+      await axios.put(`http://localhost:3001/users/${currentUser.uid}`, {
+        fullName: userData.fullName,
+        phone: userData.phone,
+        email: currentUser.email,
+        updatedAt: new Date().toISOString()
       });
       
-      console.log('Order submitted successfully:', response.data);
-      setSubmitSuccess(true);
+      // Создаем заказ
+      await axios.post('http://localhost:3001/orders', {
+        id: Date.now().toString(),
+        userId: currentUser.uid,
+        userName: userData.fullName,
+        userPhone: userData.phone,
+        carInfo: {
+          id: car.id,
+          make: car.make,
+          model: car.model,
+          year: car.year,
+          price: car.price,
+          mainPhotoUrl: car.mainPhotoUrl
+        },
+        status: 'new',
+        createdAt: new Date().toISOString()
+      });
       
-      // Сбрасываем форму после успешной отправки
+      setSuccess(true);
+      
+      // Сбрасываем состояние успеха через 3 секунды и закрываем модальное окно
       setTimeout(() => {
-        setFormData({
-          fullName: '',
-          phone: '',
-          email: ''
-        });
+        setSuccess(false);
         onClose();
-        setSubmitSuccess(false);
-      }, 2000);
-      
+      }, 3000);
     } catch (error) {
-      console.error('Error submitting order:', error);
-      setSubmitError('Произошла ошибка при отправке заказа. Пожалуйста, попробуйте позже.');
+      console.error('Ошибка при оформлении заказа:', error);
+      setError('Произошла ошибка при оформлении заказа. Пожалуйста, попробуйте еще раз.');
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  if (!show) {
-    return null;
-  }
+  if (!isOpen) return null;
 
   return (
-    <div 
-      className="modal fade show" 
-      style={{ 
-        display: 'block', 
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        backdropFilter: 'blur(5px)'
-      }}
-      onClick={onClose}
-    >
-      <div 
-        className="modal-dialog modal-dialog-centered" 
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="modal-content border-0 shadow">
-          <div className="modal-header bg-primary text-white">
+    <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex={-1}>
+      <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-content">
+          <div className="modal-header">
             <h5 className="modal-title">Оформление заказа</h5>
-            <button 
-              type="button" 
-              className="btn-close btn-close-white" 
-              onClick={onClose}
-              aria-label="Close"
-            ></button>
+            <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
-          
-          <div className="modal-body p-4">
-            {submitSuccess ? (
+          <div className="modal-body">
+            {success ? (
               <div className="text-center py-4">
                 <div className="mb-3">
                   <i className="bi bi-check-circle-fill text-success" style={{ fontSize: '3rem' }}></i>
                 </div>
-                <h4 className="mb-3">Заказ успешно оформлен!</h4>
-                <p className="text-muted">Наш менеджер свяжется с вами в ближайшее время.</p>
+                <h5 className="mb-3">Заказ успешно оформлен!</h5>
+                <p className="mb-0">Наш менеджер свяжется с вами в ближайшее время.</p>
               </div>
             ) : (
               <>
-                <div className="car-info mb-4 p-3 rounded" style={{ backgroundColor: 'rgba(0, 0, 0, 0.05)' }}>
-                  <h6 className="mb-2">{carMake} {carModel} ({carYear})</h6>
-                  <div className="fw-bold text-primary">{carPrice.toLocaleString()} ₽</div>
-                </div>
+                {car && (
+                  <div className="mb-4">
+                    <div className="d-flex align-items-center">
+                      {car.mainPhotoUrl && (
+                        <div className="me-3" style={{ width: '80px', height: '60px' }}>
+                          <img 
+                            src={car.mainPhotoUrl} 
+                            alt={`${car.make} ${car.model}`}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              borderRadius: '4px'
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <h6 className="mb-1">{car.make} {car.model}</h6>
+                        <p className="mb-0 small text-muted">{car.year} г., {car.price.toLocaleString()} ₽</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
-                {submitError && (
-                  <div className="alert alert-danger mb-3">{submitError}</div>
+                {error && (
+                  <div className="alert alert-danger mb-3">{error}</div>
                 )}
                 
                 <form onSubmit={handleSubmit}>
@@ -174,60 +161,41 @@ const OrderModal: React.FC<OrderModalProps> = ({
                     <label htmlFor="fullName" className="form-label">ФИО</label>
                     <input
                       type="text"
-                      className={`form-control ${errors.fullName ? 'is-invalid' : ''}`}
+                      className="form-control"
                       id="fullName"
                       name="fullName"
-                      value={formData.fullName}
+                      value={userData.fullName}
                       onChange={handleChange}
-                      placeholder="Иванов Иван Иванович"
+                      placeholder="Введите ваше полное имя"
+                      required
                     />
-                    {errors.fullName && (
-                      <div className="invalid-feedback">{errors.fullName}</div>
-                    )}
                   </div>
                   
                   <div className="mb-3">
                     <label htmlFor="phone" className="form-label">Номер телефона</label>
                     <input
                       type="tel"
-                      className={`form-control ${errors.phone ? 'is-invalid' : ''}`}
+                      className="form-control"
                       id="phone"
                       name="phone"
-                      value={formData.phone}
+                      value={userData.phone}
                       onChange={handleChange}
                       placeholder="+7 (999) 123-45-67"
+                      required
                     />
-                    {errors.phone && (
-                      <div className="invalid-feedback">{errors.phone}</div>
-                    )}
                   </div>
                   
-                  <div className="mb-3">
-                    <label htmlFor="email" className="form-label">Email</label>
-                    <input
-                      type="email"
-                      className={`form-control ${errors.email ? 'is-invalid' : ''}`}
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="example@mail.ru"
-                    />
-                    {errors.email && (
-                      <div className="invalid-feedback">{errors.email}</div>
-                    )}
-                  </div>
-                  
-                  <div className="d-grid gap-2 mt-4">
+                  <div className="d-grid">
                     <button 
                       type="submit" 
-                      className="btn btn-primary py-2"
-                      disabled={isSubmitting}
+                      className="btn"
+                      style={{ backgroundColor: 'var(--accent)', color: 'white' }}
+                      disabled={loading}
                     >
-                      {isSubmitting ? (
+                      {loading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          Отправка...
+                          Оформление...
                         </>
                       ) : 'Оформить заказ'}
                     </button>

@@ -1,0 +1,91 @@
+{
+  "users": [
+    {
+      "email": "user2@2.com",
+      "fullName": "Абоб Абе Абебович",
+      "phone": "+7(952)726-96-26",
+      "createdAt": "2025-05-28T17:31:09.316Z",
+      "updatedAt": "2025-05-28T17:31:09.316Z"
+    },
+    {
+      "email": "user2@2.com",
+      "fullName": "Абоб Абе Абебович",
+      "phone": "+7(952)726-96-26",
+      "createdAt": "2025-05-28T17:48:36.518Z",
+      "updatedAt": "2025-05-28T17:48:36.518Z"
+    },
+    {
+      "id": "undefined",
+      "fullName": "",
+      "phone": "",
+      "email": "user2@2.com",
+      "updatedAt": "2025-05-29T16:31:57.837Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "1748453458633",
+      "userEmail": "user2@2.com",
+      "fullName": "Абоб Абе Абебович",
+      "phone": "+7(952)726-96-26",
+      "carId": 1,
+      "carInfo": {
+        "make": "Toyota",
+        "model": "Camry",
+        "year": 2023,
+        "price": 2500000,
+        "mainPhotoUrl": "https://placehold.co/600x400/black/white?text=Toyota+Camry+2023"
+      },
+      "status": "cancelled",
+      "createdAt": "2025-05-28T17:30:58.633Z",
+      "updatedAt": "2025-05-28T17:33:15.167Z"
+    },
+    {
+      "id": "1748454525253",
+      "userEmail": "user2@2.com",
+      "fullName": "Абоб Абе Абебович",
+      "phone": "+7(952)726-96-26",
+      "carId": 7,
+      "carInfo": {
+        "make": "Audi",
+        "model": "RS6",
+        "year": 2020,
+        "price": 123000,
+        "mainPhotoUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSO_RzPgVdv59e3GlDIuwDvD8PH9rwDhXmMpw&s"
+      },
+      "status": "completed",
+      "createdAt": "2025-05-28T17:48:45.253Z",
+      "updatedAt": "2025-05-28T17:48:45.253Z"
+    },
+    {
+      "id": "1748455078916",
+      "userName": "Абоб Абе Абебович",
+      "userPhone": "+7(952)726-96-26",
+      "carInfo": {
+        "id": 2,
+        "make": "BMW",
+        "model": "5 Series",
+        "year": 2022,
+        "price": 4800000,
+        "mainPhotoUrl": "https://placehold.co/600x400/222222/white?text=BMW+5+Series+2022"
+      },
+      "status": "processing",
+      "createdAt": "2025-05-28T17:57:58.917Z"
+    },
+    {
+      "id": "1748535795604",
+      "userName": "Абоб Абе Абебович",
+      "userPhone": "+7(952)726-96-26",
+      "carInfo": {
+        "id": 2,
+        "make": "BMW",
+        "model": "5 Series",
+        "year": 2022,
+        "price": 4800000,
+        "mainPhotoUrl": "https://placehold.co/600x400/222222/white?text=BMW+5+Series+2022"
+      },
+      "status": "new",
+      "createdAt": "2025-05-29T16:23:15.604Z"
+    }
+  ]
+}

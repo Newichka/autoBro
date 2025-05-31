@@ -1,6 +1,8 @@
-import axios from 'axios';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import axios from 'axios';
 import Filter from './Filter';
+import OrderModal from './OrderModal'; // Импортируем новый компонент
+import { useAuth } from '../firebase/AuthContext'; // Импортируем хук аутентификации
 
 interface Car {
   id: number | string;
@@ -79,14 +81,13 @@ export interface CarFilter { // Exporting for potential use elsewhere if needed
 }
 
 const MainContainer: React.FC = () => {
-  const API_URL = 'http://localhost:5000/api'; // Already set
+  const API_URL = 'http://localhost:8080/api';
   const [cars, setCars] = useState<Car[]>([]);
   const [allExternalCars, setAllExternalCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [modelsLoading, setModelsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ page: 0, totalPages: 0, totalElements: 0 });
-
   const [bodyTypes, setBodyTypes] = useState<BodyType[]>([]);
   const [colors, setColors] = useState<Color[]>([]);
   const [makes, setMakes] = useState<string[]>([]);
@@ -94,7 +95,7 @@ const MainContainer: React.FC = () => {
   const [fuelTypes, setFuelTypes] = useState<string[]>([]);
   const [transmissionTypes, setTransmissionTypes] = useState<string[]>([]);
   const [driveTypes, setDriveTypes] = useState<string[]>([]);
-
+  
   // Состояния для модального окна подробного просмотра
   const [showModal, setShowModal] = useState<boolean>(false);
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
@@ -110,15 +111,12 @@ const MainContainer: React.FC = () => {
   const [hoveredCarId, setHoveredCarId] = useState<number | string | null>(null);
   const [hoveredPhotoIndex, setHoveredPhotoIndex] = useState<number>(0);
   const [isHovering, setIsHovering] = useState<boolean>(false);
-
   const [showScrollButton, setShowScrollButton] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [showSortDropdown, setShowSortDropdown] = useState<boolean>(false);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
-
   const [activeDataSource, setActiveDataSource] = useState<'local' | 'external'>('local');
   const [parserErrorOccurred, setParserErrorOccurred] = useState<boolean>(false);
-
   const [filters, setFilters] = useState<CarFilter>({
     page: 0,
     size: 10,
@@ -133,51 +131,125 @@ const MainContainer: React.FC = () => {
     colorId: [],
   });
 
+  // Состояние для модального окна заказа (НОВОЕ)
+  const [showOrderModal, setShowOrderModal] = useState<boolean>(false);
+  const [orderCar, setOrderCar] = useState<Car | null>(null);
+
+  // Получаем информацию о текущем пользователе (НОВОЕ)
+  const { currentUser } = useAuth();
+
+  // Функция для обработки клика по кнопке "Заказать" (НОВОЕ)
+  const handleOrderClick = (e: React.MouseEvent, car: Car) => {
+    e.stopPropagation(); // Предотвращаем всплытие события, чтобы не открывалась карточка авто
+    setOrderCar(car);
+    setShowOrderModal(true);
+  };
+
+  // Функции для загрузки справочников
+  const fetchBodyTypes = useCallback(async () => {
+    try {
+      const response = await axios.get<ApiResponse<BodyType[]>>(`${API_URL}/dictionary/body-types`);
+      setBodyTypes(response.data?.data || response.data?.content || []);
+    } catch (error) {
+      console.error("Error fetching body types:", error);
+      setBodyTypes([{ id: 1, name: "Седан" }]); // Fallback data
+    }
+  }, [API_URL]);
+
+  const fetchColors = useCallback(async () => {
+    try {
+      const response = await axios.get<ApiResponse<Color[]>>(`${API_URL}/dictionary/colors`);
+      setColors(response.data?.data || response.data?.content || []);
+    } catch (error) {
+      console.error("Error fetching colors:", error);
+      setColors([{ id: 1, name: "Черный", hexCode: "#000000" }]); // Fallback data
+    }
+  }, [API_URL]);
+
+  const fetchMakes = useCallback(async () => {
+    try {
+      const response = await axios.get<ApiResponse<string[]>>(`${API_URL}/cars/makes`);
+      const data = response.data?.data || response.data?.content;
+      if (Array.isArray(data)) {
+        setMakes(data.filter(item => typeof item === 'string' && item.trim().length > 0).sort());
+      } else {
+        setMakes([]);
+      }
+    } catch (error) {
+      console.error("Error fetching makes:", error);
+      setMakes(["Toyota", "BMW", "Mercedes-Benz"].sort()); // Fallback data
+    }
+  }, [API_URL]);
+
+  const fetchFuelTypes = useCallback(async () => {
+    try {
+      const response = await axios.get<ApiResponse<string[]>>(`${API_URL}/dictionary/fuel-types`);
+      const data = response.data?.data || response.data?.content;
+      if (Array.isArray(data)) {
+        setFuelTypes(data.filter(item => typeof item === 'string' && item.trim().length > 0).sort());
+      } else {
+        setFuelTypes([]);
+      }
+    } catch (error) {
+      console.error("Error fetching fuel types:", error);
+      setFuelTypes(["Бензин", "Дизель"].sort()); // Fallback data
+    }
+  }, [API_URL]);
+
+  const fetchTransmissionTypes = useCallback(async () => {
+    try {
+      const response = await axios.get<ApiResponse<string[]>>(`${API_URL}/dictionary/transmission-types`);
+      const data = response.data?.data || response.data?.content;
+      if (Array.isArray(data)) {
+        setTransmissionTypes(data.filter(item => typeof item === 'string' && item.trim().length > 0).sort());
+      } else {
+        setTransmissionTypes([]);
+      }
+    } catch (error) {
+      console.error("Error fetching transmission types:", error);
+      setTransmissionTypes(["Автоматическая", "Механическая"].sort()); // Fallback data
+    }
+  }, [API_URL]);
+
+  const fetchDriveTypes = useCallback(async () => {
+    try {
+      const response = await axios.get<ApiResponse<string[]>>(`${API_URL}/dictionary/drive-types`);
+      const data = response.data?.data || response.data?.content;
+      if (Array.isArray(data)) {
+        setDriveTypes(data.filter(item => typeof item === 'string' && item.trim().length > 0).sort());
+      } else {
+        setDriveTypes([]);
+      }
+    } catch (error) {
+      console.error("Error fetching drive types:", error);
+      setDriveTypes(["Передний", "Задний"].sort()); // Fallback data
+    }
+  }, [API_URL]);
+
+  // Загрузка справочников при монтировании компонента
   useEffect(() => {
     const fetchDictionaries = async () => {
       setLoading(true);
       try {
-        const [bodyTypesRes, colorsRes, makesRes, fuelTypesRes, transmissionTypesRes, driveTypesRes] = await Promise.all([
-          axios.get<ApiResponse<BodyType[]>>(`${API_URL}/dictionary/body-types`),
-          axios.get<ApiResponse<Color[]>>(`${API_URL}/dictionary/colors`),
-          axios.get<ApiResponse<string[]>>(`${API_URL}/cars/makes`),
-          axios.get<ApiResponse<string[]>>(`${API_URL}/dictionary/fuel-types`),
-          axios.get<ApiResponse<string[]>>(`${API_URL}/dictionary/transmission-types`),
-          axios.get<ApiResponse<string[]>>(`${API_URL}/dictionary/drive-types`)
+        await Promise.all([
+          fetchBodyTypes(),
+          fetchColors(),
+          fetchMakes(),
+          fetchFuelTypes(),
+          fetchTransmissionTypes(),
+          fetchDriveTypes()
         ]);
-
-        setBodyTypes(bodyTypesRes.data?.data || bodyTypesRes.data?.content || []);
-        setColors(colorsRes.data?.data || colorsRes.data?.content || []);
-        
-        const extractStringArray = (response: any): string[] => {
-          const data = response?.data?.data || response?.data?.content;
-          if (Array.isArray(data)) {
-            return data.filter((item: any) => typeof item === 'string' && item.trim().length > 0).sort();
-          }
-          return [];
-        };
-
-        setMakes(extractStringArray(makesRes));
-        setFuelTypes(extractStringArray(fuelTypesRes));
-        setTransmissionTypes(extractStringArray(transmissionTypesRes));
-        setDriveTypes(extractStringArray(driveTypesRes));
-
       } catch (err) {
         console.error('Ошибка при загрузке справочников:', err);
         setError('Не удалось загрузить справочные данные');
-        setBodyTypes([{ id: 1, name: "Седан" }]);
-        setColors([{ id: 1, name: "Черный", hexCode: "#000000" }]);
-        setMakes(["Toyota", "BMW", "Mercedes-Benz"].sort());
-        setFuelTypes(["Бензин", "Дизель"].sort());
-        setTransmissionTypes(["Автоматическая", "Механическая"].sort());
-        setDriveTypes(["Передний", "Задний"].sort());
       } finally {
         setLoading(false);
       }
     };
     fetchDictionaries();
-  }, [API_URL]);
+  }, [fetchBodyTypes, fetchColors, fetchMakes, fetchFuelTypes, fetchTransmissionTypes, fetchDriveTypes]);
 
+  // Загрузка моделей при изменении выбранной марки
   useEffect(() => {
     const fetchModelsForSelectedMakes = async () => {
       if (filters.make && filters.make.length > 0) {
@@ -200,177 +272,134 @@ const MainContainer: React.FC = () => {
           setModelsLoading(false);
         }
       } else {
-        setModels([]);
+        setModels([]); // Clear models if no make is selected
       }
     };
     fetchModelsForSelectedMakes();
   }, [filters.make, API_URL]);
 
-  const fetchLocalCars = useCallback(async (currentFilters: CarFilter) => {
+  // Загрузка автомобилей
+  const fetchCars = useCallback(async (filterParams: CarFilter = {}) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Формируем параметры запроса
+      const params = new URLSearchParams();
+      
+      // Добавляем параметры фильтрации
+      if (filterParams.make && filterParams.make.length > 0) {
+        filterParams.make.forEach(make => params.append('make', make));
+      }
+      
+      if (filterParams.model && filterParams.model.length > 0) {
+        filterParams.model.forEach(model => params.append('model', model));
+      }
+      
+      if (filterParams.minYear) params.append('minYear', filterParams.minYear.toString());
+      if (filterParams.maxYear) params.append('maxYear', filterParams.maxYear.toString());
+      if (filterParams.minPrice) params.append('minPrice', filterParams.minPrice.toString());
+      if (filterParams.maxPrice) params.append('maxPrice', filterParams.maxPrice.toString());
+      if (filterParams.minMileage) params.append('minMileage', filterParams.minMileage.toString());
+      if (filterParams.maxMileage) params.append('maxMileage', filterParams.maxMileage.toString());
+      
+      if (filterParams.bodyTypeId && filterParams.bodyTypeId.length > 0) {
+        filterParams.bodyTypeId.forEach(id => params.append('bodyTypeId', id.toString()));
+      }
+      
+      if (filterParams.fuelType && filterParams.fuelType.length > 0) {
+        filterParams.fuelType.forEach(type => params.append('fuelType', type));
+      }
+      
+      if (filterParams.transmissionType && filterParams.transmissionType.length > 0) {
+        filterParams.transmissionType.forEach(type => params.append('transmissionType', type));
+      }
+      
+      if (filterParams.driveType && filterParams.driveType.length > 0) {
+        filterParams.driveType.forEach(type => params.append('driveType', type));
+      }
+      
+      if (filterParams.colorId && filterParams.colorId.length > 0) {
+        filterParams.colorId.forEach(id => params.append('colorId', id.toString()));
+      }
+      
+      // Добавляем параметры пагинации и сортировки
+      params.append('page', (filterParams.page || 0).toString());
+      params.append('size', (filterParams.size || 10).toString());
+      params.append('sortBy', filterParams.sortBy || 'createdAt');
+      params.append('sortDirection', filterParams.sortDirection || 'DESC');
+      
+      // Выполняем запрос
+      const response = await axios.get<ApiResponse<Car[]>>(`${API_URL}/cars`, { params });
+      
+      // Обрабатываем ответ
+      const responseData = response.data?.data || response.data?.content;
+      if (Array.isArray(responseData)) {
+        setCars(responseData);
+        setPagination({
+          page: response.data?.number || 0,
+          totalPages: response.data?.totalPages || 0,
+          totalElements: response.data?.totalElements || 0,
+        });
+      } else {
+        console.error('Получены некорректные данные для автомобилей:', response.data);
+        setCars([]);
+        setPagination({ page: 0, totalPages: 0, totalElements: 0 });
+      }
+    } catch (err) {
+      console.error('Ошибка при загрузке автомобилей:', err);
+      setError('Не удалось загрузить список автомобилей');
+      setCars([]);
+      setPagination({ page: 0, totalPages: 0, totalElements: 0 });
+    } finally {
+      setLoading(false);
+    }
+  }, [API_URL]);
+
+  // Загрузка внешних автомобилей
+  const fetchExternalCars = useCallback(async () => {
     setLoading(true);
     setError(null);
     setParserErrorOccurred(false);
     try {
-      const params: Record<string, string | number> = {};
-
-      for (const key in currentFilters) {
-        if (Object.prototype.hasOwnProperty.call(currentFilters, key)) {
-          const filterKey = key as keyof CarFilter;
-          const value = currentFilters[filterKey];
-
-          if (value !== undefined && value !== null) {
-            if (Array.isArray(value)) {
-              if (value.length > 0) {
-                params[filterKey] = value.join(',');
-              }
-            } else if (typeof value === 'string') {
-              if (value.trim() !== '') {
-                params[filterKey] = value;
-              }
-            } else if (typeof value === 'number') {
-              params[filterKey] = value;
-            }
-          }
-        }
-      }
-
-      params.page = currentFilters.page !== undefined ? currentFilters.page : 0;
-      params.size = currentFilters.size !== undefined ? currentFilters.size : 10;
-      if (currentFilters.sortBy) params.sortBy = currentFilters.sortBy;
-      if (currentFilters.sortDirection) params.sortDirection = currentFilters.sortDirection;
-      
-      console.log("Requesting /cars with params:", params);
-
-      const response = await axios.get<ApiResponse<Car[]>>(`${API_URL}/cars`, { params });
-      const responseData = response.data?.data || response.data?.content || [];
-      setCars(responseData);
-      setPagination({
-        page: response.data?.number !== undefined ? response.data.number : 0,
-        totalPages: response.data?.totalPages || 0,
-        totalElements: response.data?.totalElements || 0,
-      });
-    } catch (err: any) {
-      console.error('Ошибка при загрузке автомобилей из БД:', err);
-      if (axios.isAxiosError(err) && err.response) {
-        console.error('Backend error details:', err.response.data);
-        setError(`Не удалось загрузить автомобили: ${err.response.status} ${err.response.statusText}. Детали: ${JSON.stringify(err.response.data)}`);
-      } else {
-        setError('Не удалось загрузить автомобили из базы данных. Проверьте консоль для подробностей.');
-      }
-      setCars([]);
+      const response = await axios.get<Car[]>('/kolesa_parsed_cars.json');
+      setAllExternalCars(response.data || []);
+    } catch (err) {
+      console.error('Ошибка при загрузке внешних автомобилей:', err);
+      setError('Не удалось загрузить данные с внешнего источника');
+      setAllExternalCars([]);
+      setParserErrorOccurred(true);
     } finally {
       setLoading(false);
     }
-  }, [API_URL]); 
+  }, []);
 
-  const applyFiltersToExternalCars = useCallback((allCars: Car[], currentFilters: CarFilter) => {
-    let filtered = [...allCars];
-    if (currentFilters.make && currentFilters.make.length > 0) {
-        filtered = filtered.filter(car => currentFilters.make!.includes(car.make));
-    }
-    if (currentFilters.model && currentFilters.model.length > 0) {
-        filtered = filtered.filter(car => currentFilters.model!.includes(car.model));
-    }
-    if (currentFilters.minYear) {
-        filtered = filtered.filter(car => car.year >= currentFilters.minYear!);
-    }
-    if (currentFilters.maxYear) {
-        filtered = filtered.filter(car => car.year <= currentFilters.maxYear!);
-    }
-    if (currentFilters.minPrice) {
-        filtered = filtered.filter(car => car.price >= currentFilters.minPrice!);
-    }
-    if (currentFilters.maxPrice) {
-        filtered = filtered.filter(car => car.price <= currentFilters.maxPrice!);
-    }
-    if (currentFilters.minMileage) {
-        filtered = filtered.filter(car => car.mileage !== undefined && car.mileage >= currentFilters.minMileage!);
-    }
-    if (currentFilters.maxMileage) {
-        filtered = filtered.filter(car => car.mileage !== undefined && car.mileage <= currentFilters.maxMileage!);
-    }
-    if (currentFilters.fuelType && currentFilters.fuelType.length > 0) {
-        filtered = filtered.filter(car => car.fuelType && currentFilters.fuelType!.map(ft => ft.toLowerCase()).includes(car.fuelType.toLowerCase()));
-    }
-    if (currentFilters.colorId && currentFilters.colorId.length > 0) {
-        const filterColorsNames = colors.filter(c => currentFilters.colorId!.includes(c.id)).map(c => c.name.toLowerCase());
-        if (filterColorsNames.length > 0) {
-             filtered = filtered.filter(car => car.color && filterColorsNames.includes(car.color.toLowerCase()));
-        }
-    }
-    if (currentFilters.bodyTypeId && currentFilters.bodyTypeId.length > 0) {
-        const filterBodyTypeNames = bodyTypes.filter(bt => currentFilters.bodyTypeId!.includes(bt.id)).map(bt => bt.name.toLowerCase());
-        if (filterBodyTypeNames.length > 0) {
-            filtered = filtered.filter(car => car.bodyTypeName && filterBodyTypeNames.includes(car.bodyTypeName.toLowerCase()));
-        }
-    }
-    if (currentFilters.transmissionType && currentFilters.transmissionType.length > 0) {
-        const filterTransmissionNames = currentFilters.transmissionType.map(t => t.toLowerCase());
-        filtered = filtered.filter(car =>
-            (car.technicalSpec?.transmissionType && filterTransmissionNames.includes(car.technicalSpec.transmissionType.toLowerCase())) ||
-            (car.transmissionInfo && filterTransmissionNames.some(ftn => car.transmissionInfo!.toLowerCase().includes(ftn)))
-        );
-    }
-    if (currentFilters.driveType && currentFilters.driveType.length > 0) {
-        const filterDriveNames = currentFilters.driveType.map(d => d.toLowerCase());
-        filtered = filtered.filter(car =>
-            car.technicalSpec?.driveType && filterDriveNames.includes(car.technicalSpec.driveType.toLowerCase())
-        );
-    }
-    
-    const page = currentFilters.page || 0;
-    const size = currentFilters.size || 10;
-    const paginatedCars = filtered.slice(page * size, (page + 1) * size);
-    setCars(paginatedCars);
-    setPagination({ page, totalPages: Math.ceil(filtered.length / size), totalElements: filtered.length });
-  }, [colors, bodyTypes]); // Added dependencies for colors and bodyTypes
-
-  // Функция для генерации URL заглушки с названием модели
-  const generatePlaceholderUrl = (make: string, model: string, year: number): string => {
-    // Очищаем и форматируем текст для URL
-    const cleanMake = make.replace(/[^\w\s]/gi, '').trim();
-    const cleanModel = model.replace(/[^\w\s]/gi, '').trim();
-    
-    // Создаем текст для заглушки
-    const placeholderText = `${cleanMake}+${cleanModel}+${year}`;
-    
-    // Генерируем случайный цвет фона для разнообразия заглушек
-    const colors = ['4285F4', '34A853', 'FBBC05', 'EA4335', '673AB7', '3F51B5', '2196F3', '03A9F4', '00BCD4'];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    
-    // Возвращаем URL заглушки с названием модели
-    return `https://via.placeholder.com/600x400/${randomColor}/FFFFFF?text=${placeholderText}`;
-  };
-
-  // Функция fetchExternalCars удалена, так как парсер больше не используется
-
+  // Первоначальная загрузка данных
   useEffect(() => {
     if (activeDataSource === 'local') {
-        fetchLocalCars(filters);
+      fetchCars(filters);
     } else {
-        // Внешний источник данных удален, показываем сообщение
-        setError('Функция парсинга внешнего источника была удалена. Показываются данные из нашей базы.');
-        setActiveDataSource('local');
-        fetchLocalCars(filters);
+      fetchExternalCars();
     }
-  }, [filters, activeDataSource, fetchLocalCars]);
+  }, [fetchCars, fetchExternalCars, filters, activeDataSource]);
 
+  // Обработчики событий
   const handleFilterChange = (name: string, value: any) => {
-    setFilters(prevFilters => ({
-      ...prevFilters,
-      [name]: value,
-      page: 0, 
-    }));
+    setFilters(prev => {
+      const newFilter = { ...prev, [name]: value, page: 0 }; // Reset page on filter change
+      // Reset model if make is changed
+      if (name === 'make') {
+        newFilter.model = [];
+      }
+      return newFilter;
+    });
   };
 
-  const handleApplyFilters = () => { // This function might become redundant if filters apply on change
+  const handleApplyFilters = () => {
     if (activeDataSource === 'local') {
-      fetchLocalCars(filters);
-    } else {
-      // applyFiltersToExternalCars is called via useEffect when filters change
-      // but if we want an explicit apply button:
-      applyFiltersToExternalCars(allExternalCars, filters);
+      fetchCars(filters);
     }
+    // For external data source, filtering is handled client-side in renderCars
   };
 
   const handleResetFilters = () => {
@@ -388,12 +417,105 @@ const MainContainer: React.FC = () => {
       colorId: [],
     };
     setFilters(defaultFilters);
-    // Data will be refetched/refiltered by the useEffect hook watching 'filters'
+    if (activeDataSource === 'local') {
+      fetchCars(defaultFilters);
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setFilters(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handleSortChange = (sortBy: string, sortDirection: string) => {
+    setFilters(prev => ({ ...prev, sortBy, sortDirection, page: 0 }));
+    setShowSortDropdown(false);
+  };
+
+  const handleViewModeChange = (mode: 'grid' | 'list') => {
+    setViewMode(mode);
   };
 
   const handleDataSourceChange = (source: 'local' | 'external') => {
     setActiveDataSource(source);
-    // Data fetching/filtering will be handled by the useEffect watching 'activeDataSource' and 'filters'
+  };
+
+  const handleCarClick = (car: Car) => {
+    setSelectedCar(car);
+    setCurrentPhotoIndex(0);
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedCar(null);
+  };
+
+  const handlePhotoChange = (direction: 'prev' | 'next') => {
+    if (!selectedCar || !selectedCar.allPhotoUrls || selectedCar.allPhotoUrls.length <= 1) return;
+    const totalPhotos = selectedCar.allPhotoUrls.length;
+    let newIndex = currentPhotoIndex;
+    if (direction === 'prev') {
+      newIndex = (currentPhotoIndex - 1 + totalPhotos) % totalPhotos;
+    } else {
+      newIndex = (currentPhotoIndex + 1) % totalPhotos;
+    }
+    setCurrentPhotoIndex(newIndex);
+  };
+
+  const handleThumbnailClick = (index: number) => {
+    setCurrentPhotoIndex(index);
+  };
+
+  const handlePhotoClick = (car: Car, index: number) => {
+    setFullscreenCar(car);
+    setFullscreenPhotoIndex(index);
+    setFullscreenMode(true);
+  };
+
+  const handleCloseFullscreen = () => {
+    setFullscreenMode(false);
+    setFullscreenCar(null);
+  };
+
+  const handleChangeFullscreenPhoto = (newIndex: number) => {
+    if (!fullscreenCar || !fullscreenCar.allPhotoUrls) return;
+    setIsPhotoChanging(true);
+    setFullscreenPhotoIndex(newIndex);
+    // Allow time for fade effect
+    setTimeout(() => setIsPhotoChanging(false), 150);
+  };
+
+  const handleMouseEnterPhoto = (carId: number | string) => {
+    setHoveredCarId(carId);
+    setIsHovering(true);
+  };
+
+  const handleMouseLeavePhoto = () => {
+    setIsHovering(false);
+    // Delay hiding to allow moving to arrows
+    setTimeout(() => {
+      if (!isHovering) {
+        setHoveredCarId(null);
+        setHoveredPhotoIndex(0);
+      }
+    }, 100);
+  };
+
+  const handlePhotoArrowClick = (e: React.MouseEvent, direction: 'prev' | 'next', car: Car) => {
+    e.stopPropagation();
+    if (!car.allPhotoUrls || car.allPhotoUrls.length <= 1) return;
+    const totalPhotos = car.allPhotoUrls.length;
+    let newIndex = hoveredPhotoIndex;
+    if (direction === 'prev') {
+      newIndex = (hoveredPhotoIndex - 1 + totalPhotos) % totalPhotos;
+    } else {
+      newIndex = (hoveredPhotoIndex + 1) % totalPhotos;
+    }
+    setHoveredPhotoIndex(newIndex);
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -408,1073 +530,594 @@ const MainContainer: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Обработчики для модального окна подробного просмотра
-  const handleShowDetails = (car: Car) => {
-    // Сначала сбрасываем индекс фото, затем устанавливаем выбранную машину
-    setCurrentPhotoIndex(0);
-    setSelectedCar(car);
-    setShowModal(true);
-    document.body.style.overflow = 'hidden'; // Запрещаем прокрутку фона
-  };
-
-  const handleCloseModal = () => {
-    setShowModal(false);
-    document.body.style.overflow = ''; // Возвращаем прокрутку
-  };
-
-  // Обработчики для полноэкранного режима просмотра фотографий
-  const handleOpenFullscreen = (car: Car, index: number = 0, e?: React.MouseEvent) => {
-    if (e) {
-      e.stopPropagation();
-    }
-    // Сначала сбрасываем индекс фото, затем устанавливаем выбранную машину
-    setFullscreenPhotoIndex(index);
-    setFullscreenCar(car);
-    setFullscreenMode(true);
-    document.body.style.overflow = 'hidden'; // Запрещаем прокрутку фона
-  };
-
-  const handleCloseFullscreen = () => {
-    setFullscreenMode(false);
-    setTimeout(() => {
-      setFullscreenCar(null);
-      document.body.style.overflow = ''; // Возвращаем прокрутку
-    }, 300); // Задержка для анимации
-  };
-
-  const handleFullscreenBackgroundClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      handleCloseFullscreen();
-    }
-  };
-
-  const handleChangeFullscreenPhoto = (newIndex: number) => {
-    setIsPhotoChanging(true);
-    setTimeout(() => {
-      setFullscreenPhotoIndex(newIndex);
-      setIsPhotoChanging(false);
-    }, 200);
-  };
-
-  // Обработчики для навигации по фотографиям
-  const nextPhoto = () => {
-    if (selectedCar && selectedCar.allPhotoUrls && selectedCar.allPhotoUrls.length > 0) {
-      setCurrentPhotoIndex((prevIndex) => (prevIndex + 1) % selectedCar.allPhotoUrls!.length);
-    }
-  };
-
-  const prevPhoto = () => {
-    if (selectedCar && selectedCar.allPhotoUrls && selectedCar.allPhotoUrls.length > 0) {
-      setCurrentPhotoIndex((prevIndex) => (prevIndex - 1 + selectedCar.allPhotoUrls!.length) % selectedCar.allPhotoUrls!.length);
-    }
-  };
-
-  // Обработчики для наведения на изображения
-  const handleImageMouseEnter = (car: Car) => {
-    setHoveredCarId(car.id);
-    setIsHovering(true);
-  };
-
-  const handleImageMouseLeave = () => {
-    setIsHovering(false);
-  };
-
-  const handleImageMouseMove = (e: React.MouseEvent, car: Car) => {
-    if (!car.allPhotoUrls || car.allPhotoUrls.length <= 1) return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const width = rect.width;
-    const percentage = x / width;
-    const photoIndex = Math.min(
-      Math.floor(percentage * car.allPhotoUrls.length),
-      car.allPhotoUrls.length - 1
-    );
-    setHoveredPhotoIndex(photoIndex);
-  };
-
   useEffect(() => {
-    const handleClickOutsideDropdown = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent) => {
       if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
         setShowSortDropdown(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutsideDropdown);
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutsideDropdown);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
-  // Обработчик нажатия клавиш для навигации в полноэкранном режиме
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!fullscreenMode || !fullscreenCar || !fullscreenCar.allPhotoUrls) return;
-      
-      if (e.key === 'Escape') {
-        handleCloseFullscreen();
-      } else if (e.key === 'ArrowLeft' && fullscreenCar.allPhotoUrls.length > 1) {
-        const newIndex = fullscreenPhotoIndex === 0 
-          ? fullscreenCar.allPhotoUrls.length - 1 
-          : fullscreenPhotoIndex - 1;
-        handleChangeFullscreenPhoto(newIndex);
-      } else if (e.key === 'ArrowRight' && fullscreenCar.allPhotoUrls.length > 1) {
-        const newIndex = fullscreenPhotoIndex === fullscreenCar.allPhotoUrls.length - 1 
-          ? 0 
-          : fullscreenPhotoIndex + 1;
-        handleChangeFullscreenPhoto(newIndex);
-      } else if (e.key === 'ArrowUp' && fullscreenCar.allPhotoUrls.length > 1) {
-        // Прокрутка вверх - предыдущее фото
-        const newIndex = fullscreenPhotoIndex === 0 
-          ? fullscreenCar.allPhotoUrls.length - 1 
-          : fullscreenPhotoIndex - 1;
-        handleChangeFullscreenPhoto(newIndex);
-      } else if (e.key === 'ArrowDown' && fullscreenCar.allPhotoUrls.length > 1) {
-        // Прокрутка вниз - следующее фото
-        const newIndex = fullscreenPhotoIndex === fullscreenCar.allPhotoUrls.length - 1 
-          ? 0 
-          : fullscreenPhotoIndex + 1;
-        handleChangeFullscreenPhoto(newIndex);
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [fullscreenMode, fullscreenCar, fullscreenPhotoIndex]);
+  // Рендеринг автомобилей
+  const renderCars = () => {
+    let carsToRender: Car[] = [];
 
-  const applySorting = (sortBy: string, sortDirection: string) => {
-    const newFilters = { ...filters, sortBy, sortDirection, page: 0 };
-    setFilters(newFilters);
-    setShowSortDropdown(false);
-    // Data will be refetched/refiltered by the useEffect hook watching 'filters'
+    if (activeDataSource === 'local') {
+      carsToRender = cars;
+    } else {
+      // Client-side filtering for external cars
+      carsToRender = allExternalCars.filter(car => {
+        if (filters.make && filters.make.length > 0 && !filters.make.includes(car.make)) return false;
+        if (filters.model && filters.model.length > 0 && !filters.model.includes(car.model)) return false;
+        if (filters.minYear && car.year < filters.minYear) return false;
+        if (filters.maxYear && car.year > filters.maxYear) return false;
+        if (filters.minPrice && car.price < filters.minPrice) return false;
+        if (filters.maxPrice && car.price > filters.maxPrice) return false;
+        if (filters.minMileage && car.mileage && car.mileage < filters.minMileage) return false;
+        if (filters.maxMileage && car.mileage && car.mileage > filters.maxMileage) return false;
+        // Add other filters as needed
+        return true;
+      });
+    }
+
+    if (loading && carsToRender.length === 0) {
+      return <div className="text-center p-5"><div className="spinner-border text-danger" role="status"><span className="visually-hidden">Загрузка...</span></div></div>;
+    }
+
+    if (!loading && carsToRender.length === 0) {
+      return <div className="alert alert-warning text-center">По вашему запросу автомобили не найдены. Попробуйте изменить параметры фильтрации.</div>;
+    }
+
+    return (
+      <div className={`row row-cols-1 ${viewMode === 'grid' ? 'row-cols-md-2 row-cols-lg-3' : ''} g-4`}>
+        {carsToRender.map((car) => (
+          <div key={car.id} className="col">
+            <div 
+              className={`card h-100 shadow-sm car-card ${viewMode === 'list' ? 'd-flex flex-row' : ''}`}
+              onClick={() => handleCarClick(car)}
+              style={{ cursor: 'pointer', transition: 'box-shadow 0.3s ease-in-out' }}
+              onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 0.5rem 1rem rgba(0, 0, 0, 0.15)')}
+              onMouseLeave={(e) => (e.currentTarget.style.boxShadow = '0 0.125rem 0.25rem rgba(0, 0, 0, 0.075)')}
+            >
+              <div 
+                className={`position-relative ${viewMode === 'list' ? 'car-list-image-wrapper' : ''}`}
+                onMouseEnter={() => handleMouseEnterPhoto(car.id)}
+                onMouseLeave={handleMouseLeavePhoto}
+              >
+                {viewMode === 'list' ? (
+                  <div className="car-image-container">
+                    {car.mainPhotoUrl ? (
+                      <img 
+                        src={car.mainPhotoUrl} 
+                        alt={`${car.make} ${car.model}`}
+                        className="car-image-list"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                        onError={(e) => {
+                          // Обработка ошибки загрузки изображения
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200?text=Нет+фото';
+                        }}
+                      />
+                    ) : (
+                      <div className="no-image-placeholder">
+                        <i className="bi bi-image text-muted"></i>
+                        <span>Нет фото</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="car-image-container">
+                    {car.mainPhotoUrl ? (
+                        <img 
+                            src={car.mainPhotoUrl} 
+                            alt={`${car.make} ${car.model}`}
+                            className="card-img-top car-image-grid" 
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                            }}
+                            onError={(e) => {
+                                // Обработка ошибки загрузки изображения
+                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200?text=Нет+фото';
+                            }}
+                        />
+                    ) : (
+                        <div className="no-image-placeholder">
+                            <i className="bi bi-image text-muted"></i>
+                            <span>Нет фото</span>
+                        </div>
+                    )}
+                  </div>
+                )}
+                {hoveredCarId === car.id && car.allPhotoUrls && car.allPhotoUrls.length > 1 && (
+                  <>
+                    <button 
+                      className="photo-arrow prev-arrow position-absolute top-50 start-0 translate-middle-y ms-2 btn btn-sm btn-dark bg-opacity-50 rounded-circle"
+                      onClick={(e) => handlePhotoArrowClick(e, 'prev', car)}
+                      style={{ zIndex: 1 }}
+                    >
+                      <i className="bi bi-chevron-left"></i>
+                    </button>
+                    <button 
+                      className="photo-arrow next-arrow position-absolute top-50 end-0 translate-middle-y me-2 btn btn-sm btn-dark bg-opacity-50 rounded-circle"
+                      onClick={(e) => handlePhotoArrowClick(e, 'next', car)}
+                      style={{ zIndex: 1 }}
+                    >
+                      <i className="bi bi-chevron-right"></i>
+                    </button>
+                    <div className="photo-counter position-absolute bottom-0 end-0 bg-dark bg-opacity-75 text-white px-2 py-1 rounded-pill mb-2 me-2" style={{ fontSize: '0.8rem' }}>
+                      {hoveredPhotoIndex + 1} / {car.allPhotoUrls.length}
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className={`card-body d-flex flex-column ${viewMode === 'list' ? 'car-list-body' : ''}`}>
+                <h5 className="card-title mb-1">{car.make} {car.model}</h5>
+                <p className="card-text text-muted small mb-2">{car.year} г.</p>
+                <h6 className="card-subtitle mb-2 fw-bold" style={{ color: 'var(--accent)' }}>{car.price.toLocaleString()} ₽</h6>
+                <div className="mt-auto">
+                  <p className="card-text small text-muted mb-1">
+                    {car.engineInfo || car.technicalSpec?.fuelType}{car.technicalSpec?.engineVolume ? ` ${car.technicalSpec.engineVolume} л.` : ''}{car.technicalSpec?.horsePower ? ` / ${car.technicalSpec.horsePower} л.с.` : ''}
+                  </p>
+                  <p className="card-text small text-muted mb-1">
+                    {car.transmissionInfo || car.technicalSpec?.transmissionType}, {car.technicalSpec?.driveType} привод
+                  </p>
+                  {car.mileage !== undefined && <p className="card-text small text-muted mb-2">Пробег: {car.mileage.toLocaleString()} км</p>}
+                  {car.location && <p className="card-text small text-muted mb-0"><i className="bi bi-geo-alt-fill me-1"></i>{car.location}</p>}
+                  
+                  {/* Кнопка Заказать (НОВОЕ) */} 
+                  {currentUser && (
+                    <button 
+                      className="btn btn-sm mt-3 w-100"
+                      style={{ backgroundColor: 'var(--accent)', color: 'white' }}
+                      onClick={(e) => handleOrderClick(e, car)} // Используем новый обработчик
+                    >
+                      <i className="bi bi-cart-plus me-2"></i>Заказать
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
-    <div className="container-fluid mt-3">
-      <div className="row">
-        <div className="col-lg-12">
-          {activeDataSource === 'local' && (
-            <Filter
-              filters={filters}
-              makes={makes}
-              models={models} // Now dynamically populated
+    <div className="container-fluid mt-4">
+      {/* Filter Component */} 
+      <Filter 
+        filters={filters}
+        selectedMake={filters.make && filters.make.length > 0 ? filters.make[0] : null} // Pass selected make
+        makes={makes}
+        models={models}
+        bodyTypes={bodyTypes}
+        colors={colors}
+        fuelTypes={fuelTypes}
+        transmissionTypes={transmissionTypes}
+        driveTypes={driveTypes}
+        onChange={(e) => {
+          const { name, value, type, checked } = e.target as HTMLInputElement;
+          handleFilterChange(name, type === 'checkbox' ? checked : value);
+        }}
+        onFilterChange={handleFilterChange}
+        onApply={handleApplyFilters}
+        onReset={handleResetFilters}
+        onMakeChange={(make) => {
+          // Trigger model loading when make changes in Filter component
+          setFilters(prev => ({ ...prev, make: make ? [make] : [], model: [], page: 0 }));
+        }}
+        modelsLoading={modelsLoading}
+      />
 
-              // modelsLoading={modelsLoading} // Pass loading state for models
-              bodyTypes={bodyTypes}
-              colors={colors}
-              fuelTypes={fuelTypes}
-              transmissionTypes={transmissionTypes}
-              driveTypes={driveTypes}
-              onFilterChange={handleFilterChange}
-              onApply={handleApplyFilters} // Kept for explicit apply, though useEffect also works
-              onReset={handleResetFilters} selectedMake={''} onChange={function (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>): void {
-                throw new Error('Function not implemented.');
-              } }            />
-          )}
+      {/* Data Source Tabs */} 
+      <ul className="nav nav-tabs mb-3">
+        <li className="nav-item">
+          <button 
+            className={`nav-link ${activeDataSource === 'local' ? 'active' : ''}`}
+            onClick={() => handleDataSourceChange('local')}
+            style={activeDataSource === 'local' ? { color: 'var(--accent)', borderColor: 'var(--accent)', borderBottomColor: 'white' } : {}}
+          >
+            <i className="bi bi-database me-1"></i> Наша база
+          </button>
+        </li>
+        <li className="nav-item">
+          <button 
+            className={`nav-link ${activeDataSource === 'external' ? 'active' : ''} ${parserErrorOccurred ? 'text-danger' : ''}`}
+            onClick={() => handleDataSourceChange('external')}
+            style={activeDataSource === 'external' ? { color: 'var(--accent)', borderColor: 'var(--accent)', borderBottomColor: 'white' } : {}}
+          >
+            <i className={`bi ${parserErrorOccurred ? 'bi-exclamation-triangle' : 'bi-cloud-download'} me-1`}></i> 
+            Внешний источник {parserErrorOccurred ? '(Ошибка)' : ''}
+          </button>
+        </li>
+      </ul>
+
+      {/* View Mode and Sorting */} 
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <button 
+            className={`btn btn-sm ${viewMode === 'list' ? 'btn-secondary' : 'btn-outline-secondary'} me-2`}
+            onClick={() => handleViewModeChange('list')}
+          >
+            <i className="bi bi-list-ul"></i> Список
+          </button>
+          <button 
+            className={`btn btn-sm ${viewMode === 'grid' ? 'btn-secondary' : 'btn-outline-secondary'}`}
+            onClick={() => handleViewModeChange('grid')}
+          >
+            <i className="bi bi-grid-3x3-gap-fill"></i> Сетка
+          </button>
         </div>
-        <div className="col-lg-12">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <div>
-              <button 
-                className={`btn btn-sm ${activeDataSource === 'local' ? 'btn-primary' : 'btn-outline-primary'} me-2`}
-                onClick={() => handleDataSourceChange('local')}
-              >
-                Наша база
-              </button>
-              <button 
-                className={`btn btn-sm ${activeDataSource === 'external' ? 'btn-primary' : 'btn-outline-primary'}`}
-                onClick={() => handleDataSourceChange('external')}
-              >
-                можем привезти
-              </button>
-            </div>
-            <div className="d-flex align-items-center">
-                <div className="me-2">
-                    <button className={`btn btn-sm ${viewMode === 'list' ? 'btn-secondary' : 'btn-outline-secondary'} me-1`} onClick={() => setViewMode('list')}><i className="bi bi-list-ul"></i></button>
-                    <button className={`btn btn-sm ${viewMode === 'grid' ? 'btn-secondary' : 'btn-outline-secondary'}`} onClick={() => setViewMode('grid')}><i className="bi bi-grid-3x3-gap-fill"></i></button>
-                </div>
-                <div className="position-relative" ref={sortDropdownRef}>
-                    <button className="btn btn-sm btn-outline-secondary dropdown-toggle" onClick={() => setShowSortDropdown(!showSortDropdown)}>
-                        Сортировка: {filters.sortBy === 'createdAt' ? 'По дате' : filters.sortBy === 'price' ? 'По цене' : 'По релевантности'} ({filters.sortDirection === 'ASC' ? 'возр.' : 'убыв.'})
-                    </button>
-                    {showSortDropdown && (
-                        <ul className="dropdown-menu show position-absolute end-0" style={{ zIndex: 1050 }}>
-                            <li><button className="dropdown-item" onClick={() => applySorting('createdAt', 'DESC')}>По дате (сначала новые)</button></li>
-                            <li><button className="dropdown-item" onClick={() => applySorting('createdAt', 'ASC')}>По дате (сначала старые)</button></li>
-                            <li><button className="dropdown-item" onClick={() => applySorting('price', 'ASC')}>По цене (сначала дешевые)</button></li>
-                            <li><button className="dropdown-item" onClick={() => applySorting('price', 'DESC')}>По цене (сначала дорогие)</button></li>
-                        </ul>
-                    )}
-                </div>
-            </div>
-          </div>
-
-          {loading && <div className="text-center"><div className="spinner-border" role="status"><span className="visually-hidden">Loading...</span></div></div>}
-          {error && <div className="alert alert-danger">{error}</div>}
-          
-          {!loading && !error && cars.length === 0 && <div className="alert alert-info">По вашему запросу ничего не найдено.</div>}
-
-          {viewMode === 'list' && (
-             <div className="list-view">
-                {cars.map(car => (
-                    <div key={car.id} className="card mb-3 car-card-list" onClick={() => handleShowDetails(car)}>
-                        <div className="row g-0">
-                            <div className="col-md-4">
-                                <div 
-                                  className="position-relative h-100"
-                                  onMouseMove={(e) => handleImageMouseMove(e, car)}
-                                  onMouseEnter={() => handleImageMouseEnter(car)}
-                                  onMouseLeave={handleImageMouseLeave}
-                                >
-                                  <img 
-                                    src={
-                                      isHovering && hoveredCarId === car.id && car.allPhotoUrls && car.allPhotoUrls.length > 0
-                                        ? car.allPhotoUrls[hoveredPhotoIndex]
-                                        : (car.mainPhotoUrl || 'https://via.placeholder.com/300x200.png?text=No+Image')
-                                    } 
-                                    className="img-fluid rounded-start car-image-list" 
-                                    alt={`${car.make} ${car.model}`} 
-                                    style={{ 
-                                      objectFit: 'cover',
-                                      width: '100%',
-                                      height: '100%',
-                                      minHeight: '220px',
-                                      maxHeight: '220px',
-                                      transition: 'all 0.3s ease',
-                                      cursor: 'pointer'
-                                    }}
-                                    onError={(e) => {
-                                      // Обработка ошибки загрузки изображения
-                                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200.png?text=Ошибка+загрузки';
-                                    }}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleOpenFullscreen(car, hoveredPhotoIndex);
-                                    }}
-                                  />
-                                  {/* Индикатор количества фото */}
-                                  {car.allPhotoUrls && car.allPhotoUrls.length > 1 && (
-                                    <div className="position-absolute top-0 end-0 m-2">
-                                      <button 
-                                        className="btn btn-dark btn-sm rounded-pill opacity-75"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleOpenFullscreen(car);
-                                        }}
-                                      >
-                                        <i className="bi bi-images me-1"></i> {car.allPhotoUrls.length}
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                            </div>
-                            <div className="col-md-8">
-                                <div className="card-body">
-                                    <h5 className="card-title">{car.make} {car.model} ({car.year})</h5>
-                                    <p className="card-text"><strong>Цена: {car.price.toLocaleString()} ₽</strong></p>
-                                    {car.mileage !== undefined && <p className="card-text"><small className="text-muted">Пробег: {car.mileage.toLocaleString()} км</small></p>}
-                                    {car.engineInfo && <p className="card-text"><small className="text-muted">Двигатель: {car.engineInfo}</small></p>}
-                                    {car.location && <p className="card-text"><small className="text-muted">Город: {car.location}</small></p>}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-          )}
-
-          {viewMode === 'grid' && (
-            <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 grid-view">
-                {cars.map(car => (
-                    <div key={car.id} className="col">
-                        <div className="card h-100 car-card-grid" onClick={() => handleShowDetails(car)}>
-                            <div 
-                              className="position-relative"
-                              onMouseMove={(e) => handleImageMouseMove(e, car)}
-                              onMouseEnter={() => handleImageMouseEnter(car)}
-                              onMouseLeave={handleImageMouseLeave}
-                            >
-                              <img 
-                                src={
-                                  isHovering && hoveredCarId === car.id && car.allPhotoUrls && car.allPhotoUrls.length > 0
-                                    ? car.allPhotoUrls[hoveredPhotoIndex]
-                                    : (car.mainPhotoUrl || 'https://via.placeholder.com/300x200.png?text=No+Image')
-                                } 
-                                className="card-img-top car-image-grid" 
-                                alt={`${car.make} ${car.model}`} 
-                                style={{ 
-                                  objectFit: 'cover',
-                                  height: '200px',
-                                  transition: 'all 0.3s ease'
-                                }}
-                                onError={(e) => {
-                                  // Обработка ошибки загрузки изображения
-                                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200.png?text=Ошибка+загрузки';
-                                }}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleOpenFullscreen(car, hoveredPhotoIndex);
-                                }}
-                              />
-                              {/* Индикатор количества фото */}
-                              {car.allPhotoUrls && car.allPhotoUrls.length > 1 && (
-                                <div className="position-absolute top-0 end-0 m-2">
-                                  <button 
-                                    className="btn btn-dark btn-sm rounded-pill opacity-75"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenFullscreen(car);
-                                    }}
-                                  >
-                                    <i className="bi bi-images me-1"></i> {car.allPhotoUrls.length}
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                            <div className="card-body">
-                                <h5 className="card-title">{car.make} {car.model} ({car.year})</h5>
-                                <p className="card-text"><strong>{car.price.toLocaleString()} ₽</strong></p>
-                                {car.mileage !== undefined && <p className="card-text"><small className="text-muted">{car.mileage.toLocaleString()} км</small></p>}
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-          )}
-
-          {!loading && pagination.totalPages > 1 && (
-            <nav aria-label="Page navigation" className="mt-4 d-flex justify-content-center">
-              <ul className="pagination">
-                <li className={`page-item ${pagination.page === 0 ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => setFilters(f => ({...f, page: f.page! - 1}))}>Предыдущая</button>
-                </li>
-                {[...Array(pagination.totalPages).keys()].map(num => (
-                  <li key={num} className={`page-item ${pagination.page === num ? 'active' : ''}`}>
-                    <button className="page-link" onClick={() => setFilters(f => ({...f, page: num}))}>{num + 1}</button>
-                  </li>
-                ))}
-                <li className={`page-item ${pagination.page === pagination.totalPages - 1 ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => setFilters(f => ({...f, page: f.page! + 1}))}>Следующая</button>
-                </li>
-              </ul>
-            </nav>
+        <div className="position-relative" ref={sortDropdownRef}>
+          <button 
+            className="btn btn-sm btn-outline-secondary dropdown-toggle"
+            onClick={() => setShowSortDropdown(!showSortDropdown)}
+          >
+            Сортировка: {
+              filters.sortBy === 'createdAt' ? 'По дате добавления' : 
+              filters.sortBy === 'price' ? 'По цене' : 
+              filters.sortBy === 'year' ? 'По году выпуска' : 
+              filters.sortBy === 'mileage' ? 'По пробегу' : 'По умолчанию'
+            } ({filters.sortDirection === 'ASC' ? 'возр.' : 'убыв.'})
+          </button>
+          {showSortDropdown && (
+            <ul className="dropdown-menu dropdown-menu-end show position-absolute" style={{ zIndex: 100 }}>
+              <li><button className="dropdown-item" onClick={() => handleSortChange('createdAt', 'DESC')}>По дате добавления (сначала новые)</button></li>
+              <li><button className="dropdown-item" onClick={() => handleSortChange('price', 'ASC')}>По цене (сначала дешевые)</button></li>
+              <li><button className="dropdown-item" onClick={() => handleSortChange('price', 'DESC')}>По цене (сначала дорогие)</button></li>
+              <li><button className="dropdown-item" onClick={() => handleSortChange('year', 'DESC')}>По году выпуска (сначала новые)</button></li>
+              <li><button className="dropdown-item" onClick={() => handleSortChange('year', 'ASC')}>По году выпуска (сначала старые)</button></li>
+              <li><button className="dropdown-item" onClick={() => handleSortChange('mileage', 'ASC')}>По пробегу (сначала меньше)</button></li>
+              <li><button className="dropdown-item" onClick={() => handleSortChange('mileage', 'DESC')}>По пробегу (сначала больше)</button></li>
+            </ul>
           )}
         </div>
       </div>
 
-      {/* Модальное окно с подробной информацией */}
+      {/* Error Message */} 
+      {error && <div className="alert alert-danger">{error}</div>}
+
+      {/* Car List */} 
+      {renderCars()}
+
+      {/* Pagination */} 
+      {activeDataSource === 'local' && pagination.totalPages > 1 && (
+        <nav aria-label="Page navigation" className="mt-4 d-flex justify-content-center">
+          <ul className="pagination">
+            <li className={`page-item ${pagination.page === 0 ? 'disabled' : ''}`}>
+              <button className="page-link" onClick={() => handlePageChange(pagination.page - 1)}>&laquo;</button>
+            </li>
+            {[...Array(pagination.totalPages).keys()].map(pageNumber => (
+              <li key={pageNumber} className={`page-item ${pagination.page === pageNumber ? 'active' : ''}`}>
+                <button className="page-link" onClick={() => handlePageChange(pageNumber)}>{pageNumber + 1}</button>
+              </li>
+            ))}
+            <li className={`page-item ${pagination.page === pagination.totalPages - 1 ? 'disabled' : ''}`}>
+              <button className="page-link" onClick={() => handlePageChange(pagination.page + 1)}>&raquo;</button>
+            </li>
+          </ul>
+        </nav>
+      )}
+
+      {/* Modal for Car Details */} 
       {showModal && selectedCar && (
-        <div className="modal-wrapper position-fixed top-0 start-0 w-100 h-100" 
-              style={{ 
-                zIndex: 1050,
-                perspective: '1000px'
-              }}>
-          <div 
-            className="modal-backdrop position-fixed top-0 start-0 w-100 h-100" 
-            style={{ 
-              backgroundColor: 'rgba(26, 38, 57, 0.75)', 
-              backdropFilter: 'blur(5px)',
-              zIndex: 1051 
-            }} 
-            onClick={handleCloseModal}
-          ></div>
-          <div className="modal show d-block" style={{ zIndex: 1052 }} tabIndex={-1} role="dialog">
-            <div className="modal-dialog modal-lg modal-dialog-scrollable" 
-                 style={{ 
-                   transform: 'translateY(30px)',
-                   animation: 'modalFadeIn 0.4s ease forwards',
-                   opacity: 0
-                 }}>
-              <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                {/* Хедер с градиентом */}
-                <div className="modal-header border-0 p-0">
-                  <div className="w-100 position-relative">
-                    <div 
-                      className="car-header p-3 px-4" 
-                      style={{ 
-                        background: 'linear-gradient(135deg, var(--bs-primary), var(--bs-primary-light, #0d6efd))',
-                        color: 'white'
-                      }}>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5 className="modal-title my-1 fs-4 fw-bold d-flex align-items-center">
-                          <i className="bi bi-car-front me-2"></i>
-                          {selectedCar.make} {selectedCar.model}
-                          <span className="badge rounded-pill ms-3" style={{ 
-                            backgroundColor: 'rgba(255, 255, 255, 0.25)', 
-                            fontSize: '0.7em',
-                            padding: '0.35em 0.8em'
-                          }}>{selectedCar.year} г.</span>
-                        </h5>
-                        <button 
-                          type="button" 
-                          className="btn-close btn-close-white" 
-                          onClick={handleCloseModal} 
-                          aria-label="Close"
-                        ></button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-body p-0">
-                  {/* Секция с фото и основной информацией */}
-                  <div className="car-main-info">
-                    <div className="row g-0">
-                      <div className="col-lg-12 position-relative car-img-container">
+        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex={-1}>
+          <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{selectedCar.make} {selectedCar.model} - {selectedCar.year} г.</h5>
+                <button type="button" className="btn-close" onClick={handleCloseModal}></button>
+              </div>
+              <div className="modal-body p-0">
+                <div className="row g-0">
+                  <div className="col-lg-8 position-relative">
+                    {selectedCar.allPhotoUrls && selectedCar.allPhotoUrls.length > 0 ? (
+                      <>
                         <img 
-                          src={selectedCar.allPhotoUrls && selectedCar.allPhotoUrls.length > 0 && currentPhotoIndex < selectedCar.allPhotoUrls.length
-                              ? selectedCar.allPhotoUrls[currentPhotoIndex] 
-                              : (selectedCar.mainPhotoUrl || generatePlaceholderUrl(selectedCar.make, selectedCar.model, selectedCar.year))} 
-                          className="img-fluid" 
-                          alt={`${selectedCar.make} ${selectedCar.model}`} 
-                          style={{ 
-                            height: '400px', 
-                            width: '100%', 
-                            objectFit: 'contain',
-                            cursor: 'pointer' // Добавляем указатель для улучшения UX
-                          }}
-                          onError={(e) => {
-                            // Обработка ошибки загрузки изображения - используем заглушку с названием модели
-                            (e.target as HTMLImageElement).src = generatePlaceholderUrl(selectedCar.make, selectedCar.model, selectedCar.year);
-                          }}
-                          onClick={() => {
-                            // Открываем полноэкранный режим при клике на фото
-                            handleOpenFullscreen(selectedCar, currentPhotoIndex);
-                          }}
+                          src={selectedCar.allPhotoUrls[currentPhotoIndex]} 
+                          className="img-fluid w-100" 
+                          alt={`Фото ${currentPhotoIndex + 1}`}
+                          style={{ maxHeight: '70vh', objectFit: 'contain', cursor: 'zoom-in' }}
+                          onClick={() => handlePhotoClick(selectedCar, currentPhotoIndex)}
                         />
-                        
-                        {/* Кнопки навигации для фото */}
-                        {selectedCar.allPhotoUrls && selectedCar.allPhotoUrls.length > 1 && (
+                        {selectedCar.allPhotoUrls.length > 1 && (
                           <>
                             <button 
-                              className="btn position-absolute top-50 start-0 translate-middle-y ms-2 rounded-circle shadow-sm" 
-                              style={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                                width: '40px',
-                                height: '40px',
-                                fontSize: '1.2rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                prevPhoto();
-                              }}
+                              className="btn btn-dark bg-opacity-50 position-absolute top-50 start-0 translate-middle-y ms-2 rounded-circle"
+                              onClick={() => handlePhotoChange('prev')}
+                              style={{ width: '40px', height: '40px' }}
                             >
                               <i className="bi bi-chevron-left"></i>
                             </button>
                             <button 
-                              className="btn position-absolute top-50 end-0 translate-middle-y me-2 rounded-circle shadow-sm" 
-                              style={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.8)', 
-                                width: '40px', 
-                                height: '40px',
-                                fontSize: '1.2rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                nextPhoto();
-                              }}
+                              className="btn btn-dark bg-opacity-50 position-absolute top-50 end-0 translate-middle-y me-2 rounded-circle"
+                              onClick={() => handlePhotoChange('next')}
+                              style={{ width: '40px', height: '40px' }}
                             >
                               <i className="bi bi-chevron-right"></i>
                             </button>
-                          </>
-                        )}
-                        
-                        {/* Кнопка открытия полноэкранного режима */}
-                        <button 
-                          className="btn position-absolute top-0 end-0 m-2 rounded-pill shadow-sm" 
-                          style={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                            backdropFilter: 'blur(4px)',
-                            border: '1px solid rgba(255, 255, 255, 0.3)',
-                            fontSize: '0.9rem',
-                            padding: '0.4rem 0.8rem',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenFullscreen(selectedCar, currentPhotoIndex);
-                          }}
-                        >
-                          <i className="bi bi-arrows-fullscreen me-1"></i> Полный экран
-                        </button>
-                        
-                        {/* Значок состояния автомобиля */}
-                        {selectedCar.condition && (
-                          <div className="position-absolute top-0 start-0 m-3">
-                            <div className="badge py-2 px-3 rounded-pill" style={{ 
-                              backgroundColor: selectedCar.condition === 'Новое' ? 'var(--bs-success)' : selectedCar.condition === 'Отличное' ? 'var(--bs-primary)' : 'rgba(108, 117, 125, 0.9)',
-                              color: 'white',
-                              fontSize: '0.85rem',
-                              fontWeight: '500',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
-                            }}>
-                              <i className={`bi ${selectedCar.condition === 'Новое' ? 'bi-patch-check' : 'bi-speedometer'} me-1`}></i>
-                              {selectedCar.condition}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Галерея внизу фото */}
-                        {selectedCar.allPhotoUrls && selectedCar.allPhotoUrls.length > 0 && (
-                          <div className="position-absolute bottom-0 start-0 w-100 p-2" style={{
-                            background: 'linear-gradient(to top, rgba(0,0,0,0.6), transparent)'
-                          }}>
-                            <div className="d-flex gap-2 overflow-auto p-1">
+                            <div className="position-absolute bottom-0 start-50 translate-middle-x mb-2 d-flex flex-wrap justify-content-center p-2" style={{ maxWidth: '90%' }}>
                               {selectedCar.allPhotoUrls.map((url, index) => (
-                                <div key={index} className="flex-shrink-0">
-                                  <img 
-                                    src={url} 
-                                    className={`rounded ${currentPhotoIndex === index ? 'border-2 border-primary' : 'border border-white'}`}
-                                    alt={`${selectedCar.make} ${selectedCar.model} - фото ${index + 1}`} 
-                                    style={{ 
-                                      height: '60px', 
-                                      width: '80px', 
-                                      objectFit: 'cover',
-                                      cursor: 'pointer',
-                                      transition: 'all 0.2s ease',
-                                      opacity: currentPhotoIndex === index ? 1 : 0.7,
-                                      transform: currentPhotoIndex === index ? 'translateY(-3px)' : 'none',
-                                      boxShadow: currentPhotoIndex === index ? '0 4px 10px rgba(0,0,0,0.3)' : 'none'
-                                    }}
-                                    onError={(e) => {
-                                      // Обработка ошибки загрузки миниатюры
-                                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80x60?text=Ошибка';
-                                    }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setCurrentPhotoIndex(index);
-                                    }}
-                                    onDoubleClick={(e) => {
-                                      e.stopPropagation();
-                                      // Открываем полноэкранный режим при двойном клике
-                                      handleOpenFullscreen(selectedCar, index);
-                                    }}
-                                  />
-                                </div>
+                                <img 
+                                  key={index}
+                                  src={url}
+                                  alt={`Миниатюра ${index + 1}`}
+                                  className="img-thumbnail m-1"
+                                  style={{
+                                    width: '60px',
+                                    height: '45px',
+                                    objectFit: 'cover',
+                                    cursor: 'pointer',
+                                    border: currentPhotoIndex === index ? '2px solid var(--bs-primary)' : '1px solid #ddd',
+                                    opacity: currentPhotoIndex === index ? 1 : 0.6
+                                  }}
+                                  onClick={() => handleThumbnailClick(index)}
+                                />
                               ))}
                             </div>
-                          </div>
+                          </>
                         )}
-                      </div>
-                      <div className="col-lg-11 p-4">
-                        <div className="modal-animation-container">
-                          {/* Цена с анимацией */}
-                          <div className="price-block mb-4">
-                            <div className="fs-4 fw-bold price-pulse m-2" style={{ color: 'var(--bs-primary)'}}>
-                              {selectedCar.price.toLocaleString()} ₽
-                            </div>
-                            {selectedCar.createdAt && (
-                              <div className="text-muted small">
-                                <i className="bi bi-calendar3 me-1"></i> Размещено: {new Date(selectedCar.createdAt).toLocaleDateString()}
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Локация */}
-                          {selectedCar.location && (
-                            <div className="location-block mb-4 p-3 rounded-3" style={{ 
-                              backgroundColor: 'rgba(249, 199, 132, 0.15)',
-                              border: '1px solid rgba(249, 199, 132, 0.3)'
-                            }}>
-                              <h6 className="fw-bold mb-2 d-flex align-items-center">
-                                <i className="bi bi-geo-alt me-2" style={{ color: 'var(--bs-primary)' }}></i>
-                                Местоположение
-                              </h6>
-                              <div className="d-flex align-items-center">
-                                <span>{selectedCar.location}</span>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Основные характеристики */}
-                          <div className="specs-highlight mb-4">
-                            <h6 className="fw-bold mb-3 d-flex align-items-center">
-                              <i className="bi bi-info-circle me-2" style={{ color: 'var(--bs-primary)' }}></i>
-                              Основные характеристики
-                            </h6>
-                            <div className="row g-3">
-                              {selectedCar.year && (
-                                <div className="col-6">
-                                  <div className="spec-item p-3 rounded-3 h-100" style={{ backgroundColor: 'rgba(53, 99, 233, 0.1)' }}>
-                                    <div className="spec-title small text-muted mb-1">Год выпуска</div>
-                                    <div className="spec-value fw-medium">{selectedCar.year}</div>
-                                  </div>
-                                </div>
-                              )}
-                              {selectedCar.mileage !== undefined && (
-                                <div className="col-6">
-                                  <div className="spec-item p-3 rounded-3 h-100" style={{ backgroundColor: 'rgba(53, 99, 233, 0.1)' }}>
-                                    <div className="spec-title small text-muted mb-1">Пробег</div>
-                                    <div className="spec-value fw-medium">{selectedCar.mileage.toLocaleString()} км</div>
-                                  </div>
-                                </div>
-                              )}
-                              {selectedCar.bodyTypeName && (
-                                <div className="col-6">
-                                  <div className="spec-item p-3 rounded-3 h-100" style={{ backgroundColor: 'rgba(53, 99, 233, 0.1)' }}>
-                                    <div className="spec-title small text-muted mb-1">Кузов</div>
-                                    <div className="spec-value fw-medium">{selectedCar.bodyTypeName}</div>
-                                  </div>
-                                </div>
-                              )}
-                              {selectedCar.colorName && (
-                                <div className="col-6">
-                                  <div className="spec-item p-3 rounded-3 h-100" style={{ backgroundColor: 'rgba(53, 99, 233, 0.1)' }}>
-                                    <div className="spec-title small text-muted mb-1">Цвет</div>
-                                    <div className="spec-value fw-medium">{selectedCar.colorName}</div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Технические характеристики */}
-                          <div className="tech-specs mb-4">
-                            <h6 className="fw-bold mb-3 d-flex align-items-center">
-                              <i className="bi bi-gear me-2" style={{ color: 'var(--bs-primary)' }}></i>
-                              Технические характеристики
-                            </h6>
-                            <ul className="list-group list-group-flush">
-                              {selectedCar.engineInfo && (
-                                <li className="list-group-item px-0 py-2 d-flex justify-content-between align-items-center border-dashed">
-                                  <span className="text-muted">Двигатель:</span>
-                                  <span className="fw-medium">{selectedCar.engineInfo}</span>
-                                </li>
-                              )}
-                              {selectedCar.technicalSpec?.horsePower && (
-                                <li className="list-group-item px-0 py-2 d-flex justify-content-between align-items-center border-dashed">
-                                  <span className="text-muted">Мощность:</span>
-                                  <span className="fw-medium">{selectedCar.technicalSpec.horsePower} л.с.</span>
-                                </li>
-                              )}
-                              {selectedCar.transmissionInfo && (
-                                <li className="list-group-item px-0 py-2 d-flex justify-content-between align-items-center border-dashed">
-                                  <span className="text-muted">Коробка:</span>
-                                  <span className="fw-medium">{selectedCar.transmissionInfo}</span>
-                                </li>
-                              )}
-                              {selectedCar.technicalSpec?.driveType && selectedCar.technicalSpec.driveType !== 'Неизвестно' && (
-                                <li className="list-group-item px-0 py-2 d-flex justify-content-between align-items-center border-dashed">
-                                  <span className="text-muted">Привод:</span>
-                                  <span className="fw-medium">{selectedCar.technicalSpec.driveType}</span>
-                                </li>
-                              )}
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Дополнительная информация */}
-                  <div className="additional-info p-4">
-                    {/* Безопасность */}
-                    {selectedCar.safetyFeatures && selectedCar.safetyFeatures.length > 0 && (
-                      <div className="safety-features mb-4">
-                        <h5 className="fw-bold mb-3 d-flex align-items-center">
-                          <span className="icon-wrapper me-2 d-inline-flex align-items-center justify-content-center rounded-circle p-2" style={{ 
-                            backgroundColor: 'rgba(48, 175, 91, 0.1)'
-                          }}>
-                            <i className="bi bi-shield-check" style={{ color: 'var(--bs-success)' }}></i>
-                          </span>
-                          Безопасность
-                        </h5>
-                        <div className="d-flex flex-wrap gap-2 badge-animation-container">
-                          {selectedCar.safetyFeatures.map((item, index) => (
-                            <span 
-                              key={index} 
-                              className="badge rounded-pill py-2 px-3" 
-                              style={{ 
-                                backgroundColor: 'rgba(48, 175, 91, 0.1)', 
-                                color: 'var(--bs-success)',
-                                border: '1px solid rgba(48, 175, 91, 0.2)',
-                                '--animation-order': index
-                              } as React.CSSProperties}
-                            >
-                              <i className="bi bi-check2 me-1"></i> {item}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                      </>
+                    ) : selectedCar.mainPhotoUrl ? (
+                      <img 
+                        src={selectedCar.mainPhotoUrl} 
+                        className="img-fluid w-100" 
+                        alt={`${selectedCar.make} ${selectedCar.model}`}
+                        style={{ maxHeight: '70vh', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <img src="https://via.placeholder.com/800x600?text=Нет+фото" className="img-fluid w-100" alt="Нет фото" />
                     )}
-                    
-                    {/* Комплектация */}
+                  </div>
+                  <div className="col-lg-4 p-4">
+                    <h4>{selectedCar.price.toLocaleString()} ₽</h4>
+                    <hr />
+                    <h6>Основные характеристики:</h6>
+                    <ul className="list-unstyled small">
+                      <li><strong>Год выпуска:</strong> {selectedCar.year}</li>
+                      {selectedCar.mileage !== undefined && <li><strong>Пробег:</strong> {selectedCar.mileage.toLocaleString()} км</li>}
+                      {selectedCar.bodyTypeName && <li><strong>Кузов:</strong> {selectedCar.bodyTypeName}</li>}
+                      {selectedCar.colorName && <li><strong>Цвет:</strong> {selectedCar.colorName}</li>}
+                      {selectedCar.technicalSpec && (
+                        <>
+                          <li><strong>Двигатель:</strong> {selectedCar.technicalSpec.fuelType}{selectedCar.technicalSpec.engineVolume ? `, ${selectedCar.technicalSpec.engineVolume} л` : ''}{selectedCar.technicalSpec.horsePower ? `, ${selectedCar.technicalSpec.horsePower} л.с.` : ''}</li>
+                          <li><strong>Коробка:</strong> {selectedCar.technicalSpec.transmissionType}</li>
+                          <li><strong>Привод:</strong> {selectedCar.technicalSpec.driveType}</li>
+                        </>
+                      )}
+                      {selectedCar.condition && <li><strong>Состояние:</strong> {selectedCar.condition}</li>}
+                      {selectedCar.location && <li><strong>Город:</strong> {selectedCar.location}</li>}
+                    </ul>
                     {selectedCar.equipment && selectedCar.equipment.length > 0 && (
-                      <div className="equipment mb-4">
-                        <h5 className="fw-bold mb-3 d-flex align-items-center">
-                          <span className="icon-wrapper me-2 d-inline-flex align-items-center justify-content-center rounded-circle p-2" style={{ 
-                            backgroundColor: 'rgba(53, 99, 233, 0.1)'
-                          }}>
-                            <i className="bi bi-list-check" style={{ color: 'var(--bs-primary)' }}></i>
-                          </span>
-                          Комплектация
-                        </h5>
-                        <div className="d-flex flex-wrap gap-2 badge-animation-container">
+                      <>
+                        <hr />
+                        <h6>Комплектация:</h6>
+                        <ul className="list-inline small">
                           {selectedCar.equipment.map((item, index) => (
-                            <span 
-                              key={index} 
-                              className="badge rounded-pill py-2 px-3" 
-                              style={{ 
-                                backgroundColor: 'rgba(48, 175, 91, 0.1)', 
-                                color: 'var(--bs-success)',
-                                border: '1px solid rgba(48, 175, 91, 0.2)',
-                                '--animation-order': index
-                              } as React.CSSProperties}
-                            >
-                              <i className="bi bi-check2 me-1"></i> {item}
-                            </span>
+                            <li key={index} className="list-inline-item bg-light border rounded px-2 py-1 m-1">{item}</li>
                           ))}
-                        </div>
-                      </div>
+                        </ul>
+                      </>
+                    )}
+                    {selectedCar.safetyFeatures && selectedCar.safetyFeatures.length > 0 && (
+                      <>
+                        <hr />
+                        <h6>Безопасность:</h6>
+                        <ul className="list-inline small">
+                          {selectedCar.safetyFeatures.map((item, index) => (
+                            <li key={index} className="list-inline-item bg-light border rounded px-2 py-1 m-1">{item}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    {/* Кнопка Заказать в модальном окне (НОВОЕ) */} 
+                    {currentUser && (
+                      <button 
+                        className="btn mt-3 w-100"
+                        style={{ backgroundColor: 'var(--accent)', color: 'white' }}
+                        onClick={(e) => handleOrderClick(e, selectedCar)} // Используем новый обработчик
+                      >
+                        <i className="bi bi-cart-plus me-2"></i>Заказать этот автомобиль
+                      </button>
                     )}
                   </div>
-                </div>
-                <div className="modal-footer justify-content-between border-0 bg-light p-3">
-                  <span className="small text-muted d-flex align-items-center">
-                    <i className="bi bi-info-circle me-1"></i> ID автомобиля: {selectedCar.id}
-                  </span>
-                  <button 
-                    type="button" 
-                    className="btn btn-sm rounded-pill px-3 py-2" 
-                    style={{ 
-                      backgroundColor: 'var(--bs-primary)',
-                      color: 'white',
-                      border: 'none'
-                    }} 
-                    onClick={handleCloseModal}
-                  >
-                    <i className="bi bi-x-lg me-1"></i> Закрыть
-                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
       )}
-      
-      {/* CSS стили для анимации модального окна */}
-      <style>
-        {`
-          @keyframes modalFadeIn {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          
-          @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          
-          @keyframes fadeInRight {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
-          }
-          
-          @keyframes fadeInLeft {
-            from { opacity: 0; transform: translateX(20px); }
-            to { opacity: 1; transform: translateX(0); }
-          }
-          
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          
-          @keyframes pulseSoft {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.03); }
-            100% { transform: scale(1); }
-          }
-          
-          .price-pulse {
-            animation: pulseSoft 2s ease-in-out infinite;
-          }
-          
-          .modal-animation-container > *:nth-child(1) { animation: fadeInUp 0.5s ease-out 0.1s both; }
-          .modal-animation-container > *:nth-child(2) { animation: fadeInUp 0.5s ease-out 0.2s both; }
-          .modal-animation-container > *:nth-child(3) { animation: fadeInUp 0.5s ease-out 0.3s both; }
-          .modal-animation-container > *:nth-child(4) { animation: fadeInUp 0.5s ease-out 0.4s both; }
-          
-          .specs-highlight .row > *:nth-child(1) { animation: fadeInRight 0.5s ease-out 0.3s both; }
-          .specs-highlight .row > *:nth-child(2) { animation: fadeInLeft 0.5s ease-out 0.3s both; }
-          
-          .car-img-container { animation: fadeIn 0.8s ease-out 0.1s both; }
-          
-          .badge-animation-container > * { animation: fadeIn 0.5s ease-out calc(0.2s + var(--animation-order, 0) * 0.1s) both; }
-          
-          .border-dashed {
-            border-bottom-style: dashed !important;
-          }
-        `}
-      </style>
-      
-      {/* Полноэкранный режим просмотра фотографий */}
+
+      {/* Fullscreen Photo Viewer */} 
       {fullscreenMode && fullscreenCar && (
         <div 
-          className="fullscreen-overlay position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
-          style={{ 
-            zIndex: 9999,
-            backgroundColor: 'rgba(0, 0, 0, 0.85)',
-            backdropFilter: 'blur(8px)',
-            transition: 'all 0.3s ease',
-            overflow: 'hidden'
-          }}
-          onClick={handleFullscreenBackgroundClick}
+          className="fullscreen-overlay position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)', zIndex: 1060 }}
+          onClick={handleCloseFullscreen} // Close on overlay click
         >
-          {/* Контейнер для фотографии */}
           <div 
-            className="fullscreen-container position-relative"
-            style={{ 
-              width: '95%',
-              height: '92%',
-              maxWidth: '1600px',
-              display: 'flex',
-              overflow: 'hidden',
-              borderRadius: '8px'
-            }}
-            onClick={(e) => e.stopPropagation()}
+            className="fullscreen-content position-relative w-100 h-100 d-flex align-items-center justify-content-center"
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside content
           >
-            {/* Основное фото */}
-            <div 
-              className="main-photo-container d-flex align-items-center justify-content-center"
+            <img 
+              src={fullscreenCar.allPhotoUrls ? fullscreenCar.allPhotoUrls[fullscreenPhotoIndex] : fullscreenCar.mainPhotoUrl}
+              alt={`Фото ${fullscreenPhotoIndex + 1}`}
+              className={`fullscreen-image ${isPhotoChanging ? 'fade-out' : 'fade-in'}`}
               style={{
-                flex: 1,
-                height: '100%',
-                position: 'relative',
-                overflow: 'hidden'
+                maxWidth: '90%',
+                maxHeight: '90%',
+                objectFit: 'contain',
+                transition: 'opacity 0.15s ease-in-out'
               }}
-            >
-              {/* Размытый фон текущей фотографии */}
-              <div 
-                className="blurred-background position-absolute w-100 h-100"
-                style={{
-                  top: 0,
-                  left: 0,
-                  backgroundImage: fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 0 && fullscreenPhotoIndex < fullscreenCar.allPhotoUrls.length
-                    ? `url(${fullscreenCar.allPhotoUrls[fullscreenPhotoIndex]})` 
-                    : fullscreenCar.mainPhotoUrl ? `url(${fullscreenCar.mainPhotoUrl})` : `url(${generatePlaceholderUrl(fullscreenCar.make, fullscreenCar.model, fullscreenCar.year)})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  filter: 'blur(30px)',
-                  opacity: 0.6,
-                  zIndex: -1,
-                  transform: 'scale(1.1)',
-                  transition: 'background-image 0.3s ease-in-out'
-                }}
-              />
-              
-              {/* Дополнительное затемнение для улучшения видимости */}
-              <div 
-                className="overlay-dim position-absolute w-100 h-100"
-                style={{
-                  top: 0,
-                  left: 0,
-                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                  zIndex: -1
-                }}
-              />
-              
-              {/* Основное фото */}
-              <div 
-                className={`main-photo ${isPhotoChanging ? 'changing' : ''}`}
-                style={{
-                  maxWidth: '90%',
-                  maxHeight: '90%',
-                  transition: 'opacity 0.2s ease',
-                  opacity: isPhotoChanging ? 0 : 1
-                }}
-              >
-                <img 
-                  src={fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 0 && fullscreenPhotoIndex < fullscreenCar.allPhotoUrls.length
-                      ? fullscreenCar.allPhotoUrls[fullscreenPhotoIndex] 
-                      : (fullscreenCar.mainPhotoUrl || generatePlaceholderUrl(fullscreenCar.make, fullscreenCar.model, fullscreenCar.year))} 
-                  alt={`${fullscreenCar.make} ${fullscreenCar.model} - фото ${fullscreenPhotoIndex + 1}`}
+            />
+            
+            {/* Навигация по фото */}
+            {fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 1 && (
+              <>
+                <button 
+                  className="arrow-button prev-arrow position-absolute top-50 start-0 translate-middle-y ms-4"
                   style={{
-                      maxWidth: '100%',
-                      maxHeight: '85vh',
-                      objectFit: 'contain',
-                      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
-                      borderRadius: '4px'
-                  }}
-                  onError={(e) => {
-                    // Обработка ошибки загрузки изображения - используем заглушку с названием модели
-                    (e.target as HTMLImageElement).src = generatePlaceholderUrl(fullscreenCar.make, fullscreenCar.model, fullscreenCar.year);
-                  }}
-                />
-                
-                {/* Индикатор номера фотографии */}
-                {fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 1 && (
-                  <div 
-                    className="photo-counter position-absolute bottom-0 start-50 translate-middle-x mb-4 px-3 py-2 rounded-pill"
-                    style={{
-                      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                      color: 'white',
-                      fontSize: '0.9rem',
-                      backdropFilter: 'blur(4px)'
-                    }}
-                  >
-                    {fullscreenPhotoIndex + 1} / {fullscreenCar.allPhotoUrls.length}
-                  </div>
-                )}
-              </div>
-              
-              {/* Кнопки навигации */}
-              {fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 1 && (
-                <>
-                  <button 
-                    className="nav-button prev position-absolute top-50 start-0 translate-middle-y ms-4"
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '50%',
-                      width: '50px',
-                      height: '50px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '1.5rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      backdropFilter: 'blur(4px)'
-                    }}
-                    onClick={() => {
-                      const newIndex = fullscreenPhotoIndex === 0 
-                        ? fullscreenCar.allPhotoUrls!.length - 1 
-                        : fullscreenPhotoIndex - 1;
-                      handleChangeFullscreenPhoto(newIndex);
-                    }}
-                  >
-                    <i className="bi bi-chevron-left"></i>
-                  </button>
-                  <button 
-                    className="nav-button next position-absolute top-50 end-0 translate-middle-y me-4"
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '50%',
-                      width: '50px',
-                      height: '50px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '1.5rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      backdropFilter: 'blur(4px)'
-                    }}
-                    onClick={() => {
-                      const newIndex = fullscreenPhotoIndex === fullscreenCar.allPhotoUrls!.length - 1 
-                        ? 0 
-                        : fullscreenPhotoIndex + 1;
-                      handleChangeFullscreenPhoto(newIndex);
-                    }}
-                  >
-                    <i className="bi bi-chevron-right"></i>
-                  </button>
-                </>
-              )}
-              
-              {/* Кнопка закрытия */}
-              <button 
-                className="close-button position-absolute top-0 end-0 m-4"
-                style={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '40px',
-                  height: '40px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.2rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  backdropFilter: 'blur(4px)'
-                }}
-                onClick={handleCloseFullscreen}
-              >
-                <i className="bi bi-x-lg"></i>
-              </button>
-              
-              {/* Информация об автомобиле */}
-              <div 
-                className="car-info position-absolute top-0 start-0 m-4 p-3 rounded"
-                style={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                  color: 'white',
-                  maxWidth: '300px',
-                  backdropFilter: 'blur(4px)'
-                }}
-              >
-                <h5 className="mb-1">{fullscreenCar.make} {fullscreenCar.model}</h5>
-                <p className="mb-0 small">{fullscreenCar.year} г., {fullscreenCar.price.toLocaleString()} ₽</p>
-              </div>
-              
-              {/* Миниатюры фотографий внизу */}
-              {fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 1 && (
-                <div 
-                  className="thumbnails-container position-absolute bottom-0 start-0 w-100 py-3 px-4"
-                  style={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                    overflowX: 'auto',
-                    whiteSpace: 'nowrap',
+                    background: 'rgba(0, 0, 0, 0.5)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '50px',
+                    height: '50px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
                     backdropFilter: 'blur(4px)'
                   }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newIndex = fullscreenPhotoIndex === 0 
+                      ? fullscreenCar.allPhotoUrls!.length - 1 
+                      : fullscreenPhotoIndex - 1;
+                    handleChangeFullscreenPhoto(newIndex);
+                  }}
                 >
-                  <div className="d-flex gap-2 justify-content-center">
-                    {fullscreenCar.allPhotoUrls.map((url, index) => (
-                      <div 
-                        key={index} 
-                        className="thumbnail-item"
-                        style={{
-                          width: '80px',
-                          height: '60px',
-                          flexShrink: 0,
-                          cursor: 'pointer',
-                          border: fullscreenPhotoIndex === index ? '2px solid var(--bs-primary)' : '1px solid rgba(255, 255, 255, 0.3)',
-                          borderRadius: '4px',
-                          transition: 'all 0.2s ease',
-                          transform: fullscreenPhotoIndex === index ? 'scale(1.1)' : 'scale(1)',
-                          opacity: fullscreenPhotoIndex === index ? 1 : 0.6
-                        }}
-                        onClick={() => handleChangeFullscreenPhoto(index)}
-                      >
-                        <img 
-                          src={url} 
-                          alt={`Миниатюра ${index + 1}`}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            borderRadius: '3px'
-                          }}
-                          onError={(e) => {
-                            // Обработка ошибки загрузки миниатюры
-                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80x60?text=Ошибка';
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                  <i className="bi bi-chevron-left"></i>
+                </button>
+                <button 
+                  className="arrow-button next-arrow position-absolute top-50 end-0 translate-middle-y me-4"
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.5)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '50px',
+                    height: '50px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    backdropFilter: 'blur(4px)'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newIndex = fullscreenPhotoIndex === fullscreenCar.allPhotoUrls!.length - 1 
+                      ? 0 
+                      : fullscreenPhotoIndex + 1;
+                    handleChangeFullscreenPhoto(newIndex);
+                  }}
+                >
+                  <i className="bi bi-chevron-right"></i>
+                </button>
+              </>
+            )}
+            
+            {/* Кнопка закрытия */}
+            <button 
+              className="close-button position-absolute top-0 end-0 m-4"
+              style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.2rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                backdropFilter: 'blur(4px)'
+              }}
+              onClick={handleCloseFullscreen}
+            >
+              <i className="bi bi-x-lg"></i>
+            </button>
+            
+            {/* Информация об автомобиле */}
+            <div 
+              className="car-info position-absolute top-0 start-0 m-4 p-3 rounded"
+              style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                color: 'white',
+                maxWidth: '300px',
+                backdropFilter: 'blur(4px)'
+              }}
+            >
+              <h5 className="mb-1">{fullscreenCar.make} {fullscreenCar.model}</h5>
+              <p className="mb-0 small">{fullscreenCar.year} г., {fullscreenCar.price.toLocaleString()} ₽</p>
             </div>
+            
+            {/* Миниатюры фотографий внизу */}
+            {fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 1 && (
+              <div 
+                className="thumbnails-container position-absolute bottom-0 start-0 w-100 py-3 px-4"
+                style={{
+                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                  overflowX: 'auto',
+                  whiteSpace: 'nowrap',
+                  backdropFilter: 'blur(4px)'
+                }}
+              >
+                <div className="d-flex gap-2 justify-content-center">
+                  {fullscreenCar.allPhotoUrls.map((url, index) => (
+                    <div 
+                      key={index} 
+                      className="thumbnail-item"
+                      style={{
+                        width: '80px',
+                        height: '60px',
+                        flexShrink: 0,
+                        cursor: 'pointer',
+                        border: fullscreenPhotoIndex === index ? '2px solid var(--bs-primary)' : '1px solid rgba(255, 255, 255, 0.3)',
+                        borderRadius: '4px',
+                        transition: 'all 0.2s ease',
+                        transform: fullscreenPhotoIndex === index ? 'scale(1.1)' : 'scale(1)',
+                        opacity: fullscreenPhotoIndex === index ? 1 : 0.6
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent closing fullscreen
+                        handleChangeFullscreenPhoto(index);
+                      }}
+                    >
+                      <img 
+                        src={url} 
+                        alt={`Миниатюра ${index + 1}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          borderRadius: '3px'
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80x60?text=Ошибка';
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
+      
+      {/* Модальное окно заказа (НОВОЕ) */} 
+      <OrderModal 
+        isOpen={showOrderModal}
+        onClose={() => setShowOrderModal(false)}
+        car={orderCar}
+      />
       
       {showScrollButton && <button onClick={scrollToTop} className="btn btn-primary position-fixed bottom-0 end-0 m-3" style={{zIndex: 1050}}><i className="bi bi-arrow-up"></i></button>}
     </div>

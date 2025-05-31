@@ -1,78 +1,189 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../firebase/AuthContext';
+import axios from 'axios';
+
+interface UserData {
+  fullName: string;
+  phone: string;
+}
 
 const UserProfile: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
+  const [userData, setUserData] = useState<UserData>({
+    fullName: '',
+    phone: ''
+  });
+  const [loading, setLoading] = useState<boolean>(false);
+  const [message, setMessage] = useState<{text: string, type: 'success' | 'danger'} | null>(null);
+
+  // Загрузка данных пользователя при монтировании компонента
+  useEffect(() => {
+    if (currentUser) {
+      fetchUserData();
+    }
+  }, [currentUser]);
+
+  // Функция для загрузки данных пользователя
+  const fetchUserData = async () => {
+    if (!currentUser) return;
+    
+    try {
+      const response = await axios.get(`http://localhost:3001/users/${currentUser.uid}`);
+      if (response.data) {
+        setUserData({
+          fullName: response.data.fullName || '',
+          phone: response.data.phone || ''
+        });
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке данных пользователя:', error);
+      // Если пользователь не найден, создаем новую запись
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        createUserData();
+      }
+    }
+  };
+
+  // Функция для создания новой записи пользователя
+  const createUserData = async () => {
+    if (!currentUser) return;
+    
+    try {
+      await axios.post('http://localhost:3001/users', {
+        id: currentUser.uid,
+        email: currentUser.email,
+        fullName: '',
+        phone: '',
+        createdAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Ошибка при создании данных пользователя:', error);
+    }
+  };
+
+  // Обработчик изменения полей формы
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setUserData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Обработчик отправки формы
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    
+    setLoading(true);
+    setMessage(null);
+    
+    try {
+      await axios.put(`http://localhost:3001/users/${currentUser.uid}`, {
+        ...userData,
+        email: currentUser.email,
+        updatedAt: new Date().toISOString()
+      });
+      
+      setMessage({
+        text: 'Данные успешно сохранены',
+        type: 'success'
+      });
+    } catch (error) {
+      console.error('Ошибка при сохранении данных:', error);
+      setMessage({
+        text: 'Ошибка при сохранении данных',
+        type: 'danger'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Обработчик выхода из аккаунта
+  const handleLogout = () => {
+    logout();
+  };
 
   return (
-    <div className="container py-5">
-      <div className="row">
-        <div className="col-12 col-md-8 mx-auto">
+    <div className="container mt-4">
+      <div className="row justify-content-center">
+        <div className="col-md-8 col-lg-6">
           <div className="card shadow-sm">
-            <div className="card-header bg-primary text-white">
-              <h4 className="mb-0">Личный кабинет</h4>
+            <div className="card-header bg-white">
+              <h5 className="mb-0">Личный кабинет</h5>
             </div>
             <div className="card-body">
-              <div className="alert alert-info">
-                <i className="bi bi-info-circle me-2"></i>
-                Это заглушка для личного кабинета пользователя. Здесь будет размещен персональный функционал.
-              </div>
-              
-              <div className="text-center mb-4">
-                <div className="avatar-placeholder bg-light rounded-circle mx-auto d-flex align-items-center justify-content-center" style={{ width: '120px', height: '120px' }}>
-                  <i className="bi bi-person-circle text-primary" style={{ fontSize: '3rem' }}></i>
-                </div>
-                <h5 className="mt-3">{currentUser?.email}</h5>
-                <span className="badge bg-success">Пользователь</span>
-              </div>
-              
-              <h5 className="border-bottom pb-2">Персональная информация</h5>
-              <div className="row mb-4">
-                <div className="col-md-6 mb-3">
-                  <label className="form-label text-muted small">Email</label>
-                  <div>{currentUser?.email}</div>
-                </div>
-                <div className="col-md-6 mb-3">
-                  <label className="form-label text-muted small">Дата регистрации</label>
-                  <div>25 апреля 2025</div>
-                </div>
-              </div>
-              
-              <h5 className="border-bottom pb-2">Действия</h5>
-              <div className="row mt-3">
-                <div className="col-md-6 mb-3">
-                  <div className="d-grid">
-                    <button className="btn btn-outline-primary">
-                      <i className="bi bi-car-front me-2"></i>
-                      Мои автомобили
-                    </button>
+              {currentUser ? (
+                <>
+                  <div className="mb-4">
+                    <p className="mb-1"><strong>Email:</strong> {currentUser.email}</p>
                   </div>
+                  
+                  {message && (
+                    <div className={`alert alert-${message.type} alert-dismissible fade show`} role="alert">
+                      {message.text}
+                      <button type="button" className="btn-close" onClick={() => setMessage(null)}></button>
+                    </div>
+                  )}
+                  
+                  <form onSubmit={handleSubmit}>
+                    <div className="mb-3">
+                      <label htmlFor="fullName" className="form-label">ФИО</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="fullName"
+                        name="fullName"
+                        value={userData.fullName}
+                        onChange={handleChange}
+                        placeholder="Введите ваше полное имя"
+                      />
+                    </div>
+                    
+                    <div className="mb-3">
+                      <label htmlFor="phone" className="form-label">Номер телефона</label>
+                      <input
+                        type="tel"
+                        className="form-control"
+                        id="phone"
+                        name="phone"
+                        value={userData.phone}
+                        onChange={handleChange}
+                        placeholder="+7 (999) 123-45-67"
+                      />
+                    </div>
+                    
+                    <div className="d-grid gap-2">
+                      <button 
+                        type="submit" 
+                        className="btn"
+                        style={{ backgroundColor: 'var(--accent)', color: 'white' }}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            Сохранение...
+                          </>
+                        ) : 'Сохранить данные'}
+                      </button>
+                      
+                      <button 
+                        type="button" 
+                        className="btn btn-outline-secondary"
+                        onClick={handleLogout}
+                      >
+                        Выйти из аккаунта
+                      </button>
+                    </div>
+                  </form>
+                </>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="mb-0">Для доступа к личному кабинету необходимо авторизоваться</p>
                 </div>
-                <div className="col-md-6 mb-3">
-                  <div className="d-grid">
-                    <button className="btn btn-outline-primary">
-                      <i className="bi bi-star me-2"></i>
-                      Избранное
-                    </button>
-                  </div>
-                </div>
-                <div className="col-md-6 mb-3">
-                  <div className="d-grid">
-                    <button className="btn btn-outline-primary">
-                      <i className="bi bi-clock-history me-2"></i>
-                      История просмотров
-                    </button>
-                  </div>
-                </div>
-                <div className="col-md-6 mb-3">
-                  <div className="d-grid">
-                    <button className="btn btn-outline-primary">
-                      <i className="bi bi-gear me-2"></i>
-                      Настройки профиля
-                    </button>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
