@@ -48,43 +48,27 @@
   ],
   "orders": [
     {
-      "id": "1748978645481",
-      "userEmail": "user2@2.com",
+      "id": "1749321708625",
+      "uid": "DCNQ10wcNalA10ecYVJ6",
+      "userEmail": "user3@mail.ru",
       "fullName": "Шолохов Артём Иванович",
       "phone": "+7(952)726-96-26",
       "country": "Россия",
       "city": "Екатеринбург",
       "address": "Ломоносова 52",
-      "carId": 2,
+      "carId": 1,
       "carInfo": {
-        "id": 2,
-        "make": "BMW",
-        "model": "5 Series",
-        "year": 2022,
-        "price": 4800000,
-        "mainPhotoUrl": "https://placehold.co/600x400/222222/white?text=BMW+5+Series+2022"
+        "id": 1,
+        "make": "Toyota",
+        "model": "Camry",
+        "year": 2023,
+        "price": 2500000,
+        "mainPhotoUrl": "https://placehold.co/600x400/black/white?text=Toyota+Camry+2023"
       },
-      "status": "new",
-      "createdAt": "2025-06-03T19:24:05.481Z",
-      "updatedAt": "2025-06-03T19:24:05.481Z"
+      "status": "processing",
+      "createdAt": "2025-06-07T18:41:48.625Z",
+      "updatedAt": "2025-06-07T18:42:14.605Z"
     }
   ],
-  "custom_requests": [
-    {
-      "id": "cr_1749057409397",
-      "userId": "xBk9gyHMiw348cWPWFqJ",
-      "userEmail": "user2@2.com",
-      "fullName": "Шолохов Артём Иванович",
-      "phone": "+7(952)726-96-26",
-      "make": "Audi",
-      "model": "RS6",
-      "year": 2020,
-      "price": 2000000,
-      "trim": "Полная, заряженная",
-      "condition": "Новая",
-      "status": "new",
-      "createdAt": "2025-06-04T17:16:49.397Z",
-      "updatedAt": "2025-06-04T17:16:49.397Z"
-    }
-  ]
+  "custom_requests": []
 }

@@ -44,24 +44,22 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, car }) => {
   // Load user profile including address fields
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (currentUser?.uid) {
+      if (currentUser?.id) {
         try {
-          const response = await axios.get(`http://localhost:3001/users/${currentUser.uid}`);
+          const response = await axios.get(`http://localhost:3001/users/${currentUser.id}`);
           // Update state with fetched data, providing defaults
           setUserProfile({
             fullName: response.data.fullName || '',
             phone: response.data.phone || '',
-            country: response.data.country || '', // Fetch new field
-            city: response.data.city || '',       // Fetch new field
-            address: response.data.address || ''    // Fetch new field
+            country: response.data.country || '',
+            city: response.data.city || '',
+            address: response.data.address || ''
           });
         } catch (error: any) {
           if (error.response && error.response.status === 404) {
             console.log('Профиль пользователя не найден, данные будут взяты из формы.');
-            // Keep default empty state if profile not found
           } else {
             console.error('Ошибка при загрузке профиля в модальном окне заказа:', error);
-            // Optionally set an error state here
           }
         }
       }
@@ -93,18 +91,14 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, car }) => {
     setError(null);
     
     try {
-      // Optional: Save profile data first if needed (already handled in UserProfile page)
-      // await axios.post('http://localhost:3001/users', { ... });
-      
-      // Create order, sending all user details including address
       await axios.post('http://localhost:3001/orders', {
-        userId: currentUser.uid,
+        uid: currentUser.id,
         userEmail: currentUser.email,
         fullName: userProfile.fullName,
         phone: userProfile.phone,
-        country: userProfile.country, // Send new field
-        city: userProfile.city,       // Send new field
-        address: userProfile.address,   // Send new field
+        country: userProfile.country,
+        city: userProfile.city,
+        address: userProfile.address,
         carId: car.id,
         carInfo: {
           id: car.id,
@@ -114,13 +108,12 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, car }) => {
           price: car.price,
           mainPhotoUrl: car.mainPhotoUrl
         },
-        status: 'new', // Default status for new orders
-        // createdAt is handled by the backend now
+        status: 'new'
       });
       
       setSuccess(true);
       setTimeout(() => {
-        onClose(); // Close modal after success
+        onClose();
       }, 2000);
     } catch (err) {
       setError('Произошла ошибка при оформлении заказа. Пожалуйста, попробуйте позже.');
@@ -226,7 +219,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, car }) => {
                     />
                   </div>
                   <div className="mb-3">
-                    <label htmlFor="addressOrder" className="form-label">Адрес</label>
+                    <label htmlFor="addressOrder" className="form-label">Адрес доставки</label>
                     <input 
                       type="text" 
                       className="form-control" 

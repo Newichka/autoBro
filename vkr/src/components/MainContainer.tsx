@@ -661,7 +661,8 @@ const MainContainer: React.FC = () => {
         <div className="col-12">
           {/* View Mode and Sorting Controls */}
           <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <span className="text-muted small">Найдено: {displayTotalElements} автомобилей</span>
+            {/* <span className="text-muted small">Найдено: {displayTotalElements} автомобилей</span> */}
+            <span className='m-3 h4 px-2'> Автомобили AutoBro</span>
             <div className="d-flex align-items-center gap-2">
               {/* Sorting Dropdown */}
               <div className="position-relative" ref={sortDropdownRef}>

@@ -75,15 +75,15 @@ app.get("/orders/:id", (req, res) => {
 });
 
 app.get("/orders/user/:uid", (req, res) => {
-  const userOrders = db.get("orders").filter({ userId: req.params.uid }).value();
+  const userOrders = db.get("orders").filter({ uid: req.params.uid }).value();
   res.json(userOrders);
 });
 
 app.post("/orders", (req, res) => {
-  const { userId, userEmail, fullName, phone, country, city, address, carId, carInfo, status } = req.body;
+  const { uid, userEmail, fullName, phone, country, city, address, carId, carInfo, status } = req.body;
   const newOrder = {
     id: Date.now().toString(),
-    userId,
+    uid,
     userEmail,
     fullName,
     phone,
