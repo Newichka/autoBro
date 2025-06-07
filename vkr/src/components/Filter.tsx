@@ -50,9 +50,17 @@ interface FilterProps {
   transmissionTypes: string[];
   driveTypes: string[];
   onChange: (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => void;
-  onFilterChange: (name: string, value: any) => void;
+  onFilterChange: (field: keyof CarFilter, value: any) => void;
   onApply: () => void;
   onReset: () => void;
+  onResetFilters: () => void;
+  viewMode: 'grid' | 'list';
+  onViewModeChange: (mode: 'grid' | 'list') => void;
+  onSortChange: (order: 'asc' | 'desc') => void;
+  sortOrder: 'asc' | 'desc';
+  onSearch: (query: string) => void;
+  searchQuery: string;
+  parserErrorOccurred: boolean;
 }
 
 const Filter: React.FC<FilterProps> = ({ 
@@ -65,10 +73,18 @@ const Filter: React.FC<FilterProps> = ({
   fuelTypes,
   transmissionTypes,
   driveTypes,
-  onChange, 
+  onChange,
   onFilterChange,
   onApply,
-  onReset
+  onReset,
+  onResetFilters,
+  viewMode,
+  onViewModeChange,
+  onSortChange,
+  sortOrder,
+  onSearch,
+  searchQuery,
+  parserErrorOccurred
 }) => {
   // Состояние для показа всех параметров
   const [showAllParams, setShowAllParams] = useState(false);
@@ -147,7 +163,7 @@ const Filter: React.FC<FilterProps> = ({
       newValues = [value];
     }
     
-    onFilterChange(type, newValues);
+    onFilterChange(type as keyof CarFilter, newValues);
   };
   
   // Переключение состояния выпадающего списка
@@ -199,6 +215,13 @@ const Filter: React.FC<FilterProps> = ({
 
   return (
     <div className="filter-container bg-white p-3 rounded shadow-sm mb-4">
+      {/* Поиск и режим отображения */}
+      <div className="row mb-3">
+        <div className="col-md-6">
+          {/* Удаляю блок поиска по марке, модели */}
+        </div>
+      </div>
+
       {/* Первый ряд фильтров: Марка, Модель, Кузов */}
       <div className="row mb-3">
         {/* Селект марки с мультивыбором */}

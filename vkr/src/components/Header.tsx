@@ -179,6 +179,22 @@ const Header: React.FC = () => {
                           {isAdmin ? 'Панель администратора' : 'Профиль'}
                         </a>
                       </li>
+                      {!isAdmin && (
+                        <>
+                          <li>
+                            <a className="dropdown-item" href="/profile?tab=my-cars">
+                              <i className="bi bi-car-front me-2"></i>
+                              Мои машины
+                            </a>
+                          </li>
+                          <li>
+                            <a className="dropdown-item" href="/profile?tab=my-requests">
+                              <i className="bi bi-list-check me-2"></i>
+                              Мои заявки
+                            </a>
+                          </li>
+                        </>
+                      )}
                       <li><hr className="dropdown-divider" /></li>
                       <li>
                         <button className="dropdown-item" onClick={handleLogout}>

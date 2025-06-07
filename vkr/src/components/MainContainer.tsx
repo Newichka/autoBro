@@ -2,39 +2,33 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import Filter from './Filter';
 import OrderModal from './OrderModal';
+
 import CustomRequestForm from './CustomRequestForm'; // Import the new form
 import { useAuth } from '../firebase/AuthContext';
 
 // Interfaces (Car, BodyType, Color, ApiResponse, CarFilter remain the same)
 interface Car {
-  id: number | string;
+  id: number;
   make: string;
   model: string;
   year: number;
-  bodyTypeName?: string;
   price: number;
-  mileage?: number;
-  engineInfo?: string;
-  transmissionInfo?: string;
-  colorName?: string;
+  mileage: number;
+  engineVolume: number;
+  horsePower: number;
+  transmissionType: string;
+  driveType: string;
+  fuelType: string;
+  color: string;
+  bodyType: string;
+  location: string;
+  photos: string[];
+  isInActiveOrder?: boolean;
   condition?: string;
-  location?: string;
-  mainPhotoUrl?: string;
-  allPhotoUrls?: string[];
-  safetyFeatures?: string[];
-  equipment?: string[];
-  technicalSpec?: {
-    fuelType: string;
-    engineVolume?: number;
-    horsePower?: number;
-    driveType: string;
-    transmissionType: string;
-    gears?: number;
-  };
   createdAt?: string;
-  updatedAt?: string;
-  fuelType?: string; // From external parser
-  color?: string; // From external parser
+  mainPhotoUrl?: string;
+  equipment?: string[];
+  safetyFeatures?: string[];
 }
 
 interface BodyType {
@@ -79,7 +73,8 @@ export interface CarFilter {
   page?: number;
   size?: number;
   sortBy?: string;
-  sortDirection?: string;
+  sortDirection?: 'asc' | 'desc';
+  searchQuery?: string;
 }
 
 // Interface for Order (needed for checking active orders)
@@ -89,6 +84,33 @@ interface Order {
   carId: number | string;
   status: 'new' | 'processing' | 'in_transit' | 'completed' | 'cancelled';
   // Other fields might exist but are not needed for this check
+}
+
+// Тип для марок и моделей
+type MakeModel = string | { id?: number; name?: string; [key: string]: any };
+
+interface FilterProps {
+  filters: CarFilter;
+  selectedMake: string;
+  makes: MakeModel[];
+  models: MakeModel[];
+  bodyTypes: BodyType[];
+  colors: Color[];
+  fuelTypes: string[];
+  transmissionTypes: string[];
+  driveTypes: string[];
+  onChange: (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => void;
+  onFilterChange: (field: keyof CarFilter, value: any) => void;
+  onApply: () => void;
+  onReset: () => void;
+  onResetFilters: () => void;
+  viewMode: 'grid' | 'list';
+  onViewModeChange: (mode: 'grid' | 'list') => void;
+  onSortChange: (order: 'asc' | 'desc') => void;
+  sortOrder: 'asc' | 'desc';
+  onSearch: (query: string) => void;
+  searchQuery: string;
+  parserErrorOccurred: boolean;
 }
 
 const MainContainer: React.FC = () => {
@@ -129,7 +151,7 @@ const MainContainer: React.FC = () => {
   const [filters, setFilters] = useState<CarFilter>({
     page: 0,
     size: 10,
-    sortDirection: 'DESC',
+    sortDirection: 'desc',
     sortBy: 'createdAt',
     make: [],
     model: [],
@@ -144,7 +166,7 @@ const MainContainer: React.FC = () => {
   const [orderCar, setOrderCar] = useState<Car | null>(null);
   const [showCustomRequestForm, setShowCustomRequestForm] = useState<boolean>(false); // State for custom request form visibility
 
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
 
   // State to store all active orders (NEW)
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
@@ -331,7 +353,7 @@ const MainContainer: React.FC = () => {
       params.append('page', (filterParams.page || 0).toString());
       params.append('size', (filterParams.size || 10).toString());
       params.append('sortBy', filterParams.sortBy || 'createdAt');
-      params.append('sortDirection', filterParams.sortDirection || 'DESC');
+      params.append('sortDirection', filterParams.sortDirection || 'desc');
       
       const response = await axios.get<ApiResponse<Car[]>>(`${API_URL}/cars`, { params });
       
@@ -393,11 +415,10 @@ const MainContainer: React.FC = () => {
     }
   }, [fetchCars, fetchExternalCars, filters, activeDataSource]);
 
-  // Event handlers (handleFilterChange, handleApplyFilters, etc.) remain the same
-  const handleFilterChange = (name: string, value: any) => {
+  const handleFilterChange: (field: keyof CarFilter, value: any) => void = (field, value) => {
     setFilters(prev => {
-      const newFilter = { ...prev, [name]: value, page: 0 };
-      if (name === 'make') {
+      const newFilter = { ...prev, [field]: value, page: 0 };
+      if (field === 'make') {
         newFilter.model = [];
       }
       return newFilter;
@@ -414,7 +435,7 @@ const MainContainer: React.FC = () => {
     const defaultFilters: CarFilter = {
       page: 0,
       size: 10,
-      sortDirection: 'DESC',
+      sortDirection: 'desc',
       sortBy: 'createdAt',
       make: [], model: [], bodyTypeId: [], fuelType: [], transmissionType: [], driveType: [], colorId: [],
     };
@@ -428,9 +449,18 @@ const MainContainer: React.FC = () => {
     setFilters(prev => ({ ...prev, page: newPage }));
   };
 
-  const handleSortChange = (sortBy: string, sortDirection: string) => {
-    setFilters(prev => ({ ...prev, sortBy, sortDirection, page: 0 }));
-    setShowSortDropdown(false);
+  const handleSortChange = (order: 'asc' | 'desc') => {
+    setFilters(prev => ({
+      ...prev,
+      sortDirection: order
+    }));
+  };
+
+  const handleSearch = (query: string) => {
+    setFilters(prev => ({
+      ...prev,
+      searchQuery: query
+    }));
   };
 
   const handleViewModeChange = (mode: 'grid' | 'list') => {
@@ -471,14 +501,14 @@ const MainContainer: React.FC = () => {
   };
 
   const handlePhotoChange = (direction: 'prev' | 'next') => {
-    if (!selectedCar || !selectedCar.allPhotoUrls || selectedCar.allPhotoUrls.length === 0) return;
+    if (!selectedCar || !selectedCar.photos || selectedCar.photos.length === 0) return;
     
     setIsPhotoChanging(true);
     setTimeout(() => {
       setCurrentPhotoIndex(prevIndex => {
         const newIndex = direction === 'next'
-          ? (prevIndex + 1) % (selectedCar.allPhotoUrls?.length || 1)
-          : (prevIndex - 1 + (selectedCar.allPhotoUrls?.length || 1)) % (selectedCar.allPhotoUrls?.length || 1);
+          ? (prevIndex + 1) % (selectedCar.photos?.length || 1)
+          : (prevIndex - 1 + (selectedCar.photos?.length || 1)) % (selectedCar.photos?.length || 1);
         return newIndex;
       });
       setIsPhotoChanging(false);
@@ -486,14 +516,14 @@ const MainContainer: React.FC = () => {
   };
 
   const handleFullscreenPhotoChange = (direction: 'prev' | 'next') => {
-    if (!fullscreenCar || !fullscreenCar.allPhotoUrls || fullscreenCar.allPhotoUrls.length === 0) return;
+    if (!fullscreenCar || !fullscreenCar.photos || fullscreenCar.photos.length === 0) return;
     
     setIsPhotoChanging(true);
     setTimeout(() => {
       setFullscreenPhotoIndex(prevIndex => {
         const newIndex = direction === 'next'
-          ? (prevIndex + 1) % (fullscreenCar.allPhotoUrls?.length || 1)
-          : (prevIndex - 1 + (fullscreenCar.allPhotoUrls?.length || 1)) % (fullscreenCar.allPhotoUrls?.length || 1);
+          ? (prevIndex + 1) % (fullscreenCar.photos?.length || 1)
+          : (prevIndex - 1 + (fullscreenCar.photos?.length || 1)) % (fullscreenCar.photos?.length || 1);
         return newIndex;
       });
       setIsPhotoChanging(false);
@@ -568,7 +598,7 @@ const MainContainer: React.FC = () => {
   // Apply sorting to external cars
   const sortedExternalCars = [...filteredExternalCars].sort((a, b) => {
     const field = filters.sortBy || 'createdAt'; // Default sort field
-    const direction = filters.sortDirection === 'ASC' ? 1 : -1;
+    const direction = filters.sortDirection === 'asc' ? 1 : -1;
 
     let valA: any = (a as any)[field];
     let valB: any = (b as any)[field];
@@ -618,23 +648,29 @@ const MainContainer: React.FC = () => {
         <div className="col-12">
           <Filter
             filters={filters}
-            onFilterChange={handleFilterChange}
-            onApplyFilters={handleApplyFilters}
-            onResetFilters={handleResetFilters}
-            bodyTypes={bodyTypes}
-            colors={colors}
+            selectedMake={selectedCar?.make || ''}
             makes={makes}
             models={models}
+            bodyTypes={bodyTypes}
+            colors={colors}
             fuelTypes={fuelTypes}
             transmissionTypes={transmissionTypes}
             driveTypes={driveTypes}
-            modelsLoading={modelsLoading}
-            activeDataSource={activeDataSource}
-            onDataSourceChange={handleDataSourceChange}
+            onChange={handleFilterChange as any}
+            onFilterChange={handleFilterChange}
+            onApply={handleApplyFilters}
+            onReset={handleResetFilters}
+            onResetFilters={handleResetFilters}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            onSortChange={handleSortChange}
+            sortOrder={filters.sortDirection || 'asc'}
+            onSearch={handleSearch}
+            searchQuery={filters.searchQuery || ''}
             parserErrorOccurred={parserErrorOccurred}
           />
           {/* Add Custom Request Button/Section - Moved under Filter */}
-          {currentUser && (
+          {currentUser && !isAdmin && (
             <div className="mt-3">
               <button 
                 className="btn btn-outline-success" 
@@ -648,7 +684,7 @@ const MainContainer: React.FC = () => {
       </div>
 
       {/* Conditionally render Custom Request Form - Moved above car list */}
-      {showCustomRequestForm && currentUser && (
+      {showCustomRequestForm && currentUser && !isAdmin && (
         <div className="row mb-4">
           <div className="col-12">
             <CustomRequestForm onClose={() => setShowCustomRequestForm(false)} />
@@ -677,14 +713,14 @@ const MainContainer: React.FC = () => {
                 {showSortDropdown && (
                   <div className="dropdown-menu dropdown-menu-end show position-absolute" style={{ zIndex: 1050 }}>
                     <h6 className="dropdown-header">По полю</h6>
-                    <button className={`dropdown-item ${filters.sortBy === 'createdAt' ? 'active' : ''}`} onClick={() => handleSortChange('createdAt', filters.sortDirection || 'DESC')}>Дата добавления</button>
-                    <button className={`dropdown-item ${filters.sortBy === 'price' ? 'active' : ''}`} onClick={() => handleSortChange('price', filters.sortDirection || 'ASC')}>Цена</button>
-                    <button className={`dropdown-item ${filters.sortBy === 'year' ? 'active' : ''}`} onClick={() => handleSortChange('year', filters.sortDirection || 'DESC')}>Год выпуска</button>
-                    <button className={`dropdown-item ${filters.sortBy === 'mileage' ? 'active' : ''}`} onClick={() => handleSortChange('mileage', filters.sortDirection || 'ASC')}>Пробег</button>
+                    <button className={`dropdown-item ${filters.sortBy === 'createdAt' ? 'active' : ''}`} onClick={() => handleSortChange('asc')}>Дата добавления</button>
+                    <button className={`dropdown-item ${filters.sortBy === 'price' ? 'active' : ''}`} onClick={() => handleSortChange('desc')}>Цена</button>
+                    <button className={`dropdown-item ${filters.sortBy === 'year' ? 'active' : ''}`} onClick={() => handleSortChange('asc')}>Год выпуска</button>
+                    <button className={`dropdown-item ${filters.sortBy === 'mileage' ? 'active' : ''}`} onClick={() => handleSortChange('desc')}>Пробег</button>
                     <div className="dropdown-divider"></div>
                     <h6 className="dropdown-header">По направлению</h6>
-                    <button className={`dropdown-item ${filters.sortDirection === 'DESC' ? 'active' : ''}`} onClick={() => handleSortChange(filters.sortBy || 'createdAt', 'DESC')}>По убыванию</button>
-                    <button className={`dropdown-item ${filters.sortDirection === 'ASC' ? 'active' : ''}`} onClick={() => handleSortChange(filters.sortBy || 'createdAt', 'ASC')}>По возрастанию</button>
+                    <button className={`dropdown-item ${filters.sortDirection === 'desc' ? 'active' : ''}`} onClick={() => handleSortChange('desc')}>По убыванию</button>
+                    <button className={`dropdown-item ${filters.sortDirection === 'asc' ? 'active' : ''}`} onClick={() => handleSortChange('asc')}>По возрастанию</button>
                   </div>
                 )}
               </div>
@@ -735,20 +771,22 @@ const MainContainer: React.FC = () => {
                     >
                       <div 
                         className="position-relative car-image-container"
-                        onMouseMove={(e) => handleMouseMove(e, car.allPhotoUrls?.length || 1)}
+                        onMouseMove={(e) => handleMouseMove(e, car.photos?.length || 1)}
                       >
                         <img 
-                          src={hoveredCarId === car.id && car.allPhotoUrls && car.allPhotoUrls.length > 0 
-                               ? car.allPhotoUrls[hoveredPhotoIndex] 
-                               : car.mainPhotoUrl || 'https://via.placeholder.com/300x200?text=Нет+фото'}
+                          src={car.photos && car.photos.length > 0
+                            ? (hoveredCarId === car.id && typeof hoveredPhotoIndex === 'number' && car.photos[hoveredPhotoIndex]
+                                ? car.photos[hoveredPhotoIndex]
+                                : car.photos[0])
+                            : (car.mainPhotoUrl || 'https://via.placeholder.com/300x200?text=Нет+фото')}
                           className="card-img-top car-image w-100" 
                           alt={`${car.make} ${car.model}`}
                           onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200?text=Нет+фото'; }}
                         />
                         {/* Photo indicator dots */}
-                        {hoveredCarId === car.id && car.allPhotoUrls && car.allPhotoUrls.length > 1 && (
+                        {hoveredCarId === car.id && car.photos && car.photos.length > 1 && (
                           <div className="photo-dots-indicator">
-                            {car.allPhotoUrls.map((_, index) => (
+                            {car.photos.map((_, index) => (
                               <span key={index} className={`dot ${index === hoveredPhotoIndex ? 'active' : ''}`}></span>
                             ))}
                           </div>
@@ -771,14 +809,14 @@ const MainContainer: React.FC = () => {
                         <div className="car-details small text-muted mb-3 flex-grow-1">
                           <span>{car.year}г. </span>
                           {car.mileage !== undefined && <span>{car.mileage.toLocaleString()}км </span>}
-                          {car.engineInfo && <span>{car.engineInfo} </span>}
-                          {car.transmissionInfo && <span>{car.transmissionInfo} </span>}
-                          {car.bodyTypeName && <span>{car.bodyTypeName} </span>}
-                          {car.colorName && <span>{car.colorName} </span>}
+                          {car.engineVolume && <span>{car.engineVolume.toLocaleString()}л </span>}
+                          {car.horsePower && <span>{car.horsePower.toLocaleString()}л.с. </span>}
+                          {car.bodyType && <span>{car.bodyType} </span>}
+                          {car.color && <span>{car.color} </span>}
                           {car.location && <span>{car.location} </span>}
                         </div>
                         <div className="mt-auto d-flex justify-content-between align-items-center">
-                          <span className="text-muted x-small">ID: {typeof car.id === 'string' ? car.id.substring(0, 6) : car.id}</span>
+                          <span className="text-muted x-small">ID: {car.id ? String(car.id).substring(0, 6) : '------'}</span>
                           <span className="text-muted x-small">Добавлено: {car.createdAt ? new Date(car.createdAt).toLocaleDateString() : 'N/A'}</span>
                         </div>
                       </div>
@@ -820,90 +858,151 @@ const MainContainer: React.FC = () => {
 
       {/* Car Detail Modal */}
       {showModal && selectedCar && (
-         <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.7)' }} tabIndex={-1} onClick={closeModal}>
-           <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" onClick={e => e.stopPropagation()}>
-             <div className="modal-content">
-               <div className="modal-header border-0">
-                 <h5 className="modal-title">{selectedCar.make} {selectedCar.model} - {selectedCar.year}</h5>
-                 <button type="button" className="btn-close" onClick={closeModal}></button>
-               </div>
-               <div className="modal-body">
-                 <div className="row">
-                   <div className="col-md-8 mb-3 mb-md-0">
-                     <div className="position-relative text-center">
-                       <img 
-                         src={selectedCar.allPhotoUrls && selectedCar.allPhotoUrls.length > 0 
-                              ? selectedCar.allPhotoUrls[currentPhotoIndex] 
-                              : selectedCar.mainPhotoUrl || 'https://via.placeholder.com/800x500?text=Нет+фото'}
-                         className={`img-fluid rounded car-detail-image ${isPhotoChanging ? 'fade-out' : 'fade-in'}`}
-                         alt={`${selectedCar.make} ${selectedCar.model} - Фото ${currentPhotoIndex + 1}`}
-                         style={{ maxHeight: '70vh', objectFit: 'contain', cursor: 'pointer' }}
-                         onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/800x500?text=Нет+фото'; }}
-                         onClick={() => openFullscreen(selectedCar, currentPhotoIndex)}
-                       />
-                       {selectedCar.allPhotoUrls && selectedCar.allPhotoUrls.length > 1 && (
-                         <>
-                           <button className="carousel-control-prev" type="button" onClick={() => handlePhotoChange('prev')}>
-                             <span className="carousel-control-prev-icon" aria-hidden="true"></span>
-                             <span className="visually-hidden">Previous</span>
-                           </button>
-                           <button className="carousel-control-next" type="button" onClick={() => handlePhotoChange('next')}>
-                             <span className="carousel-control-next-icon" aria-hidden="true"></span>
-                             <span className="visually-hidden">Next</span>
-                           </button>
-                           <div className="photo-counter-modal">
-                             {currentPhotoIndex + 1} / {selectedCar.allPhotoUrls.length}
-                           </div>
-                         </>
-                       )}
-                     </div>
-                   </div>
-                   <div className="col-md-4">
-                     <h4 className="text-primary mb-3">{selectedCar.price.toLocaleString()} ₽</h4>
-                     <ul className="list-unstyled car-specs">
-                       <li><strong>Год:</strong> {selectedCar.year}</li>
-                       {selectedCar.mileage !== undefined && <li><strong>Пробег:</strong> {selectedCar.mileage.toLocaleString()} км</li>}
-                       {selectedCar.engineInfo && <li><strong>Двигатель:</strong> {selectedCar.engineInfo}</li>}
-                       {selectedCar.transmissionInfo && <li><strong>КПП:</strong> {selectedCar.transmissionInfo}</li>}
-                       {selectedCar.technicalSpec?.driveType && <li><strong>Привод:</strong> {selectedCar.technicalSpec.driveType}</li>}
-                       {selectedCar.technicalSpec?.fuelType && <li><strong>Топливо:</strong> {selectedCar.technicalSpec.fuelType}</li>}
-                       {selectedCar.colorName && <li><strong>Цвет:</strong> {selectedCar.colorName}</li>}
-                       {selectedCar.bodyTypeName && <li><strong>Кузов:</strong> {selectedCar.bodyTypeName}</li>}
-                       {selectedCar.location && <li><strong>Город:</strong> {selectedCar.location}</li>}
-                     </ul>
-                     {selectedCar.condition && <p className="mt-3"><strong>Состояние:</strong> {selectedCar.condition}</p>}
-                     {/* Order Button in Modal - Disable if car is in active order */} 
-                     {currentUser && (
-                       <button 
-                         className={`btn w-100 mt-3 ${isCarInActiveOrder(selectedCar.id) ? 'btn-secondary disabled' : 'btn-success'}`}
-                         onClick={(e) => handleOrderClick(e, selectedCar)}
-                         disabled={isCarInActiveOrder(selectedCar.id)}
-                       >
-                         {isCarInActiveOrder(selectedCar.id) ? <><i className="bi bi-bag-check-fill me-1"></i> Уже заказан</> : <><i className="bi bi-cart-plus me-1"></i> Оформить заказ</>}
-                       </button>
-                     )}
-                   </div>
-                 </div>
-                 {(selectedCar.equipment && selectedCar.equipment.length > 0) && (
-                   <div className="mt-4">
-                     <h6>Комплектация</h6>
-                     <ul className="list-inline small">
-                       {selectedCar.equipment.map((item, index) => <li key={index} className="list-inline-item bg-light border rounded px-2 py-1 mb-1">{item}</li>)}
-                     </ul>
-                   </div>
-                 )}
-                 {(selectedCar.safetyFeatures && selectedCar.safetyFeatures.length > 0) && (
-                   <div className="mt-3">
-                     <h6>Безопасность</h6>
-                     <ul className="list-inline small">
-                       {selectedCar.safetyFeatures.map((item, index) => <li key={index} className="list-inline-item bg-light border rounded px-2 py-1 mb-1">{item}</li>)}
-                     </ul>
-                   </div>
-                 )}
-               </div>
-             </div>
-           </div>
-         </div>
+        <div className="modal fade show car-details-modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.7)' }} tabIndex={-1} onClick={closeModal}>
+          <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" onClick={e => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{selectedCar.make} {selectedCar.model} - {selectedCar.year}</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={closeModal}></button>
+              </div>
+              <div className="modal-body">
+                <div className="car-gallery mb-4">
+                  <img 
+                    src={selectedCar.photos && selectedCar.photos.length > 0
+                      ? selectedCar.photos[currentPhotoIndex]
+                      : (selectedCar.mainPhotoUrl || 'https://via.placeholder.com/800x500?text=Нет+фото')}
+                    className={`main-image ${isPhotoChanging ? 'fade-out' : 'fade-in'}`}
+                    alt={`${selectedCar.make} ${selectedCar.model} - Фото ${currentPhotoIndex + 1}`}
+                    onClick={() => openFullscreen(selectedCar, currentPhotoIndex)}
+                  />
+                  {selectedCar.photos && selectedCar.photos.length > 1 && (
+                    <div className="thumbnail-container">
+                      {selectedCar.photos.map((url, index) => (
+                        <img
+                          key={index}
+                          src={url}
+                          alt={`${selectedCar.make} ${selectedCar.model} - Фото ${index + 1}`}
+                          className={`thumbnail ${index === currentPhotoIndex ? 'active' : ''}`}
+                          onClick={() => setCurrentPhotoIndex(index)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="row">
+                  <div className="col-md-8">
+                    <div className="car-info-section">
+                      <h4 className="section-title">Основные характеристики</h4>
+                      <div className="specs-grid">
+                        {selectedCar.year && (
+                          <div className="spec-item">
+                            <div className="spec-icon"><i className="bi bi-calendar"></i></div>
+                            <div className="spec-info"><div className="spec-label">Год</div><div className="spec-value">{selectedCar.year}</div></div>
+                          </div>
+                        )}
+                        {selectedCar.mileage !== undefined && (
+                          <div className="spec-item">
+                            <div className="spec-icon"><i className="bi bi-speedometer2"></i></div>
+                            <div className="spec-info"><div className="spec-label">Пробег</div><div className="spec-value">{selectedCar.mileage.toLocaleString()} км</div></div>
+                          </div>
+                        )}
+                        {selectedCar.engineVolume && (
+                          <div className="spec-item">
+                            <div className="spec-icon"><i className="bi bi-gear"></i></div>
+                            <div className="spec-info"><div className="spec-label">Объем двигателя</div><div className="spec-value">{selectedCar.engineVolume.toLocaleString()} л</div></div>
+                          </div>
+                        )}
+                        {selectedCar.horsePower && (
+                          <div className="spec-item">
+                            <div className="spec-icon"><i className="bi bi-lightning"></i></div>
+                            <div className="spec-info"><div className="spec-label">Мощность</div><div className="spec-value">{selectedCar.horsePower.toLocaleString()} л.с.</div></div>
+                          </div>
+                        )}
+                        {selectedCar.bodyType && (
+                          <div className="spec-item">
+                            <div className="spec-icon"><i className="bi bi-car-front-fill"></i></div>
+                            <div className="spec-info"><div className="spec-label">Кузов</div><div className="spec-value">{selectedCar.bodyType}</div></div>
+                          </div>
+                        )}
+                        {selectedCar.color && (
+                          <div className="spec-item">
+                            <div className="spec-icon"><i className="bi bi-palette"></i></div>
+                            <div className="spec-info"><div className="spec-label">Цвет</div><div className="spec-value">{selectedCar.color}</div></div>
+                          </div>
+                        )}
+                        {selectedCar.location && (
+                          <div className="spec-item">
+                            <div className="spec-icon"><i className="bi bi-geo-alt"></i></div>
+                            <div className="spec-info"><div className="spec-label">Город</div><div className="spec-value">{selectedCar.location}</div></div>
+                          </div>
+                        )}
+                        {selectedCar.fuelType && (
+                          <div className="spec-item">
+                            <div className="spec-icon"><i className="bi bi-fuel-pump"></i></div>
+                            <div className="spec-info"><div className="spec-label">Топливо</div><div className="spec-value">{selectedCar.fuelType}</div></div>
+                          </div>
+                        )}
+                        {selectedCar.transmissionType && (
+                          <div className="spec-item">
+                            <div className="spec-icon"><i className="bi bi-gear-wide-connected"></i></div>
+                            <div className="spec-info"><div className="spec-label">КПП</div><div className="spec-value">{selectedCar.transmissionType}</div></div>
+                          </div>
+                        )}
+                        {selectedCar.driveType && (
+                          <div className="spec-item">
+                            <div className="spec-icon"><i className="bi bi-cursor"></i></div>
+                            <div className="spec-info"><div className="spec-label">Привод</div><div className="spec-value">{selectedCar.driveType}</div></div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedCar.condition && (
+                      <div className="car-info-section">
+                        <h4 className="section-title">Состояние</h4>
+                        <p className="description">{selectedCar.condition}</p>
+                      </div>
+                    )}
+
+                    {((selectedCar.equipment && selectedCar.equipment.length > 0) || (selectedCar.safetyFeatures && selectedCar.safetyFeatures.length > 0)) && (
+                      <div className="car-info-section">
+                        <h4 className="section-title">Дополнительные опции</h4>
+                        <ul className="list-unstyled mb-0">
+                          {selectedCar.equipment?.map((item, idx) => (
+                            <li key={'eq-' + idx}><i className="bi bi-check2-circle text-success me-2"></i>{item}</li>
+                          ))}
+                          {selectedCar.safetyFeatures?.map((item, idx) => (
+                            <li key={'sf-' + idx}><i className="bi bi-shield-check text-primary me-2"></i>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="col-md-4">
+                    <div className="price-section">
+                      <div className="price-value">{selectedCar.price.toLocaleString()} ₽</div>
+                      <div className="action-buttons">
+                        <button 
+                          className="btn-order"
+                          onClick={() => {
+                            setOrderCar(selectedCar);
+                            setShowOrderModal(true);
+                            closeModal();
+                          }}
+                          disabled={selectedCar.isInActiveOrder}
+                        >
+                          {selectedCar.isInActiveOrder ? 'Автомобиль в заказе' : 'Заказать'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Fullscreen Image Viewer */}
@@ -911,15 +1010,15 @@ const MainContainer: React.FC = () => {
         <div className="fullscreen-modal" onClick={closeFullscreen}>
           <button className="btn-close btn-close-white fullscreen-close-btn" onClick={closeFullscreen}></button>
           <img 
-            src={fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 0 
-                 ? fullscreenCar.allPhotoUrls[fullscreenPhotoIndex] 
-                 : fullscreenCar.mainPhotoUrl || 'https://via.placeholder.com/1200x800?text=Нет+фото'}
+            src={fullscreenCar.photos && fullscreenCar.photos.length > 0 
+                 ? fullscreenCar.photos[fullscreenPhotoIndex] 
+                 : 'https://via.placeholder.com/1200x800?text=Нет+фото'}
             className={`fullscreen-image ${isPhotoChanging ? 'fade-out' : 'fade-in'}`}
             alt={`${fullscreenCar.make} ${fullscreenCar.model} - Фото ${fullscreenPhotoIndex + 1}`}
             onClick={e => e.stopPropagation()} // Prevent closing when clicking image
             onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/1200x800?text=Нет+фото'; }}
           />
-          {fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 1 && (
+          {fullscreenCar.photos && fullscreenCar.photos.length > 1 && (
             <>
               <button className="carousel-control-prev fullscreen-nav" type="button" onClick={(e) => { e.stopPropagation(); handleFullscreenPhotoChange('prev'); }}>
                 <span className="carousel-control-prev-icon" aria-hidden="true"></span>
@@ -928,7 +1027,7 @@ const MainContainer: React.FC = () => {
                 <span className="carousel-control-next-icon" aria-hidden="true"></span>
               </button>
               <div className="photo-counter-fullscreen">
-                {fullscreenPhotoIndex + 1} / {fullscreenCar.allPhotoUrls.length}
+                {fullscreenPhotoIndex + 1} / {fullscreenCar.photos.length}
               </div>
             </>
           )}

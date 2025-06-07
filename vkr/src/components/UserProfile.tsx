@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../firebase/AuthContext';
 import axios from 'axios';
 import { User } from 'firebase/auth';
+import { useLocation } from 'react-router-dom';
 
 // Define the structure for the user profile including address fields
 interface UserProfileData {
@@ -37,8 +38,23 @@ interface Order {
 // Define allowed statuses type
 type OrderStatus = 'new' | 'processing' | 'in_transit' | 'completed' | 'cancelled';
 
+// 1. Добавим тип для заявки
+interface CustomRequest {
+  id: string;
+  userId: string;
+  make: string;
+  model: string;
+  year?: number;
+  price?: number;
+  trim?: string;
+  condition?: string;
+  status: string;
+  createdAt: string;
+}
+
 const UserProfile: React.FC = () => {
   const { currentUser, logout } = useAuth();
+  const location = useLocation();
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -56,8 +72,18 @@ const UserProfile: React.FC = () => {
   // State for user orders (NEW)
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   
-  // State for active tab in profile
-  const [activeTab, setActiveTab] = useState<'profile' | 'my-cars'>('profile');
+  // 2. Добавим состояние для заявок
+  const [userRequests, setUserRequests] = useState<CustomRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
+  
+  // 3. Добавим вкладку 'my-requests' в состояние
+  const [activeTab, setActiveTab] = useState<'profile' | 'my-cars' | 'my-requests'>(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('tab') === 'my-cars') return 'my-cars';
+    if (searchParams.get('tab') === 'my-requests') return 'my-requests';
+    return 'profile';
+  });
 
   // Fetch user profile using currentUser.id
   useEffect(() => {
@@ -117,6 +143,30 @@ const UserProfile: React.FC = () => {
       }
     };
     fetchUserOrders();
+  }, [currentUser]);
+
+  // 4. Запрос заявок пользователя
+  useEffect(() => {
+    const fetchUserRequests = async () => {
+      if (currentUser?.id) {
+        setLoadingRequests(true);
+        setRequestsError(null);
+        try {
+          const response = await axios.get<CustomRequest[]>(`http://localhost:3001/custom-requests?userId=${currentUser.id}`);
+          if (Array.isArray(response.data)) {
+            setUserRequests(response.data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+          } else {
+            setUserRequests([]);
+          }
+        } catch (error) {
+          setRequestsError('Не удалось загрузить заявки.');
+          setUserRequests([]);
+        } finally {
+          setLoadingRequests(false);
+        }
+      }
+    };
+    fetchUserRequests();
   }, [currentUser]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -204,29 +254,15 @@ const UserProfile: React.FC = () => {
       <div className="row justify-content-center">
         <div className="col-md-10">
           {/* Tabs Navigation */}
-          <ul className="nav nav-tabs mb-4">
+          <ul className="nav nav-tabs mb-3">
             <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'profile' ? 'active' : ''}`} 
-                onClick={() => setActiveTab('profile')}
-                style={activeTab === 'profile' ? { color: 'var(--accent)' } : {}}
-              >
-                <i className="bi bi-person-circle me-2"></i>
-                Профиль
-              </button>
+              <button className={`nav-link ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>Профиль</button>
             </li>
             <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'my-cars' ? 'active' : ''}`} 
-                onClick={() => setActiveTab('my-cars')}
-                style={activeTab === 'my-cars' ? { color: 'var(--accent)' } : {}}
-              >
-                <i className="bi bi-car-front-fill me-2"></i>
-                Мои машины
-                {userOrders.length > 0 && (
-                  <span className="badge bg-primary ms-2">{userOrders.length}</span>
-                )}
-              </button>
+              <button className={`nav-link ${activeTab === 'my-cars' ? 'active' : ''}`} onClick={() => setActiveTab('my-cars')}>Мои машины</button>
+            </li>
+            <li className="nav-item">
+              <button className={`nav-link ${activeTab === 'my-requests' ? 'active' : ''}`} onClick={() => setActiveTab('my-requests')}>Мои заявки</button>
             </li>
           </ul>
 
@@ -361,6 +397,51 @@ const UserProfile: React.FC = () => {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* My Requests Tab */}
+          {activeTab === 'my-requests' && (
+            <div>
+              <h5 className="mb-3">Мои заявки на подбор</h5>
+              {loadingRequests ? (
+                <div className="text-center p-4"><div className="spinner-border text-primary" role="status"></div></div>
+              ) : requestsError ? (
+                <div className="alert alert-danger">{requestsError}</div>
+              ) : userRequests.length === 0 ? (
+                <div className="alert alert-info">У вас пока нет заявок на подбор.</div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover align-middle">
+                    <thead>
+                      <tr>
+                        <th>Марка</th>
+                        <th>Модель</th>
+                        <th>Год</th>
+                        <th>Бюджет</th>
+                        <th>Комплектация</th>
+                        <th>Состояние</th>
+                        <th>Статус</th>
+                        <th>Дата</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {userRequests.map(req => (
+                        <tr key={req.id}>
+                          <td>{req.make}</td>
+                          <td>{req.model}</td>
+                          <td>{req.year || '-'}</td>
+                          <td>{req.price ? req.price.toLocaleString() + ' ₽' : '-'}</td>
+                          <td>{req.trim || '-'}</td>
+                          <td>{req.condition || '-'}</td>
+                          <td><span className="badge bg-secondary">{req.status || 'В обработке'}</span></td>
+                          <td>{new Date(req.createdAt).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>
