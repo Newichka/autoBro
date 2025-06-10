@@ -1,0 +1,114 @@
+body {
+  font-family: Arial, sans-serif;
+}
+
+header {
+  background-color: #007bff;
+  color: white;
+}
+
+button {
+  font-size: 16px;
+}
+
+.card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+}
+/* MainContainer.css */
+
+/* Styles for the modal backdrop */
+.modal-backdrop.show {
+  opacity: 0.5; /* Standard Bootstrap backdrop opacity */
+}
+
+/* Custom styles for the car details modal to make it larger and more pleasant */
+.modal-dialog.modal-lg {
+  max-width: 800px; /* Larger than default .modal-lg (Bootstrap is 800px, can increase if needed) */
+}
+
+.modal-content {
+  border-radius: 0.5rem; /* Softer corners */
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); /* Standard Bootstrap shadow */
+}
+
+.modal-header {
+  background-color: #343a40; /* Dark header like the login modal example */
+  color: white;
+  border-bottom: none; /* Cleaner look */
+  padding: 1rem 1.5rem;
+}
+
+.modal-header .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%); /* Make close button white */
+}
+
+.modal-title {
+  font-size: 1.5rem; /* Larger title */
+}
+
+.modal-body {
+  padding: 1.5rem;
+  font-size: 1.1rem; /* Slightly larger text in the body */
+}
+
+.modal-body h4 {
+  font-size: 1.75rem; /* Larger price */
+  color: #0d6efd; /* Primary color for price */
+  margin-bottom: 1rem;
+}
+
+.modal-body p {
+  margin-bottom: 0.75rem; /* Spacing for paragraphs */
+}
+
+.modal-body strong {
+  color: #495057; /* Slightly darker text for labels */
+}
+
+.modal-body .img-fluid {
+  max-height: 400px; /* Limit image height in modal */
+  object-fit: cover;
+  border-radius: 0.25rem;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #dee2e6;
+}
+
+/* Ensure the modal itself is displayed with a backdrop */
+.modal.fade.show {
+    display: block;
+    background-color: rgba(0,0,0,0.5); /* This creates the backdrop */
+}
+
+/* Styling for car cards to ensure images are displayed correctly */
+.car-card-list .car-image-list,
+.car-card-grid .car-image-grid {
+    width: 100%;
+    object-fit: cover; /* Ensures the image covers the area without distortion */
+}
+
+.car-card-list .car-image-list {
+    height: 200px; /* Or a fixed height you prefer for list view */
+}
+
+.car-card-grid .car-image-grid {
+    height: 220px; /* Or a fixed height for grid view */
+}
+
+.modal-car-image {
+    width: 100%;
+    max-height: 450px; /* Adjust as needed */
+    object-fit: contain; /* Use contain to see the whole image, or cover */
+    margin-bottom: 1rem;
+}
+
+/* Additional styles for a more pleasant look, similar to a login modal */
+.modal-content {
+    /* border: 1px solid #dee2e6; */ /* Optional: if you want a border */
+}
+
+

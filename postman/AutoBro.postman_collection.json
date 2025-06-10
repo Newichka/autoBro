@@ -1,0 +1,233 @@
+{
+	"info": {
+		"_postman_id": "1234567890",
+		"name": "AutoBro",
+		"description": "API для работы с автомобильным каталогом",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Cars",
+			"item": [
+				{
+					"name": "Get Car By ID",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/api/cars/1",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "cars", "1"]
+						}
+					}
+				},
+				{
+					"name": "Search Cars",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/api/cars?make=Toyota&minYear=2020&maxPrice=3000000",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "cars"],
+							"query": [
+								{"key": "make", "value": "Toyota"},
+								{"key": "minYear", "value": "2020"},
+								{"key": "maxPrice", "value": "3000000"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Car",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:8080/api/cars",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "cars"]
+						},
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"make\": \"Honda\",\n    \"model\": \"Civic\",\n    \"year\": 2023,\n    \"bodyTypeName\": \"Седан\",\n    \"price\": 2200000,\n    \"mileage\": 0\n}"
+						}
+					}
+				},
+				{
+					"name": "Update Car",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "http://localhost:8080/api/cars/1",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "cars", "1"]
+						},
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"make\": \"Toyota\",\n    \"model\": \"Camry\",\n    \"year\": 2022,\n    \"bodyTypeName\": \"Седан\",\n    \"price\": 2600000,\n    \"mileage\": 16000\n}"
+						}
+					}
+				},
+				{
+					"name": "Delete Car",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "http://localhost:8080/api/cars/1",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "cars", "1"]
+						}
+					}
+				},
+				{
+					"name": "Upload Photos",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:8080/api/cars/1/photos",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "cars", "1", "photos"]
+						},
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "multipart/form-data"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "files",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "isMain",
+									"value": "true"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Dictionary",
+			"item": [
+				{
+					"name": "Get Body Types",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/api/dictionary/body-types",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "dictionary", "body-types"]
+						}
+					}
+				},
+				{
+					"name": "Get Colors",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/api/dictionary/colors",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "dictionary", "colors"]
+						}
+					}
+				},
+				{
+					"name": "Get Engines",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/api/dictionary/engines",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "dictionary", "engines"]
+						}
+					}
+				},
+				{
+					"name": "Get Transmissions",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/api/dictionary/transmissions",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "dictionary", "transmissions"]
+						}
+					}
+				},
+				{
+					"name": "Get Equipment",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/api/dictionary/equipment",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "dictionary", "equipment"]
+						}
+					}
+				},
+				{
+					"name": "Get Safety Features",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/api/dictionary/safety-features",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "dictionary", "safety-features"]
+						}
+					}
+				},
+				{
+					"name": "Get Conditions",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/api/dictionary/conditions",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "dictionary", "conditions"]
+						}
+					}
+				},
+				{
+					"name": "Get Locations",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/api/dictionary/locations",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["api", "dictionary", "locations"]
+						}
+					}
+				}
+			]
+		}
+	]
+} 

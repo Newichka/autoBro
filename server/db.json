@@ -1,0 +1,51 @@
+{
+  "users": [
+    {
+      "uid": "zVMK2ocpGNnNaTGMzaHO",
+      "email": "user3@3mail.ru",
+      "fullName": "Новиков Андрей Васильевич",
+      "phone": "+7(952)726-96-26",
+      "country": "Россия",
+      "city": "Екатеринбург",
+      "address": "Ломоносова 52",
+      "updatedAt": "2025-06-08T17:35:07.886Z",
+      "createdAt": "2025-06-08T17:29:07.469Z"
+    },
+    {
+      "uid": "xBk9gyHMiw348cWPWFqJ",
+      "email": "user2@2.com",
+      "fullName": "Шолохов Артём Иванович",
+      "phone": "+7(952)726-96-26",
+      "country": "Россия",
+      "city": "Екатеринбург",
+      "address": "Ломоносова 52",
+      "updatedAt": "2025-06-10T16:26:07.560Z",
+      "createdAt": "2025-06-08T17:35:41.223Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "1749572767567",
+      "uid": "xBk9gyHMiw348cWPWFqJ",
+      "userEmail": "user2@2.com",
+      "fullName": "Шолохов Артём Иванович",
+      "phone": "+7(952)726-96-26",
+      "country": "Россия",
+      "city": "Екатеринбург",
+      "address": "Ломоносова 52",
+      "carId": 5,
+      "carInfo": {
+        "id": 5,
+        "make": "Volkswagen",
+        "model": "Tiguan",
+        "year": 2020,
+        "price": 2850000,
+        "mainPhotoUrl": "https://placehold.co/600x400/eeeeee/333333?text=VW+Tiguan+2020"
+      },
+      "status": "processing",
+      "createdAt": "2025-06-10T16:26:07.567Z",
+      "updatedAt": "2025-06-10T16:42:08.075Z"
+    }
+  ],
+  "custom_requests": []
+}
