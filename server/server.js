@@ -205,41 +205,40 @@ app.get("/custom-requests", (req, res) => {
 
 // Создать новую пользовательскую заявку
 app.post("/custom-requests", (req, res) => {
-  const { userId, userEmail, fullName, phone, make, model, year, price, trim, condition } = req.body;
-  
+  const { userId, userEmail, fullName, phone, make, model, year, minPrice, maxPrice, color, trim, condition } = req.body;
   // Улучшенная валидация
   if (!userId || !userEmail || !make || !model || trim === undefined || trim === null || condition === undefined || condition === null) {
       return res.status(400).json({ message: "Не заполнены обязательные текстовые поля заявки (ID пользователя, Email, Марка, Модель, Комплектация, Состояние)" });
   }
-
   const parsedYear = parseInt(year, 10);
-  const parsedPrice = parseFloat(price);
-
+  const parsedMinPrice = minPrice !== undefined && minPrice !== null && minPrice !== '' ? parseFloat(minPrice) : undefined;
+  const parsedMaxPrice = maxPrice !== undefined && maxPrice !== null && maxPrice !== '' ? parseFloat(maxPrice) : undefined;
   if (year === undefined || year === null || isNaN(parsedYear) || parsedYear <= 0) {
       return res.status(400).json({ message: "Поле 'Год' должно быть указано и быть положительным числом" });
   }
-
-  if (price === undefined || price === null || isNaN(parsedPrice) || parsedPrice < 0) { // Цена может быть 0, если это запрос на поиск
-      return res.status(400).json({ message: "Поле 'Цена' должно быть указано и быть неотрицательным числом" });
+  if ((parsedMinPrice === undefined && parsedMaxPrice === undefined) ||
+      (parsedMinPrice !== undefined && (isNaN(parsedMinPrice) || parsedMinPrice < 0)) ||
+      (parsedMaxPrice !== undefined && (isNaN(parsedMaxPrice) || parsedMaxPrice < 0))) {
+      return res.status(400).json({ message: "Должно быть указано хотя бы одно из полей 'Бюджет от' или 'Бюджет до', и они должны быть неотрицательными числами" });
   }
-
   const newRequest = {
-    id: "cr_" + Date.now().toString(), // Префикс для отличия ID от заказов
+    id: "cr_" + Date.now().toString(),
     userId,
     userEmail,
     fullName: fullName || "Не указано",
     phone: phone || "Не указано",
     make,
     model,
-    year: parsedYear, // Используем распарсенное значение
-    price: parsedPrice, // Используем распарсенное значение
-    trim, // Комплектация
-    condition, // Состояние
-    status: "new", // Статус по умолчанию: 'new', 'viewed', 'closed'
+    year: parsedYear,
+    minPrice: parsedMinPrice,
+    maxPrice: parsedMaxPrice,
+    color: color || null,
+    trim,
+    condition,
+    status: "new",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
-  
   db.get("custom_requests").push(newRequest).write();
   res.status(201).json({ message: "Ваша заявка принята", request: newRequest });
 });

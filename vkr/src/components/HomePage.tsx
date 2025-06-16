@@ -18,7 +18,7 @@ const HomePage: React.FC = () => {
             </button>
           </div>
           <div className="col-md-6 text-center">
-            <img src="https://cdn.pixabay.com/photo/2017/01/06/19/15/auto-1957037_1280.jpg" alt="АвтоБро" className="img-fluid rounded shadow-lg homepage-hero-img" style={{maxHeight: 340}} />
+            <img src="/car.png" alt="АвтоБро" className="img-fluid rounded homepage-hero-img" style={{maxHeight: 340}} />
           </div>
         </div>
       </div>
@@ -61,7 +61,7 @@ const HomePage: React.FC = () => {
                 <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="user1" className="rounded-circle me-3" width={48} height={48} />
                 <div>
                   <div className="fw-bold">Иван Петров</div>
-                  <div className="text-muted small">Москва</div>
+                  <div className="text-muted small">Киров</div>
                 </div>
               </div>
               <div className="fst-italic">"Быстро подобрали отличный автомобиль, всё прозрачно и честно. Рекомендую!"</div>

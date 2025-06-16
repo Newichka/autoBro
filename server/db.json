@@ -19,7 +19,7 @@
       "country": "Россия",
       "city": "Екатеринбург",
       "address": "Ломоносова 52",
-      "updatedAt": "2025-06-10T16:26:07.560Z",
+      "updatedAt": "2025-06-13T10:34:29.316Z",
       "createdAt": "2025-06-08T17:35:41.223Z"
     }
   ],
@@ -47,5 +47,24 @@
       "updatedAt": "2025-06-10T16:42:08.075Z"
     }
   ],
-  "custom_requests": []
+  "custom_requests": [
+    {
+      "id": "cr_1749812577897",
+      "userId": "xBk9gyHMiw348cWPWFqJ",
+      "userEmail": "user2@2.com",
+      "fullName": "Шолохов Артём Иванович",
+      "phone": "+7(952)726-96-26",
+      "make": "Audi",
+      "model": "RS6",
+      "year": 2020,
+      "minPrice": 123,
+      "maxPrice": 123123,
+      "color": "Чёрный",
+      "trim": "Полная",
+      "condition": "Новая",
+      "status": "new",
+      "createdAt": "2025-06-13T11:02:57.897Z",
+      "updatedAt": "2025-06-13T11:02:57.897Z"
+    }
+  ]
 }

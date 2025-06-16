@@ -345,13 +345,27 @@ const MainContainer: React.FC = () => {
   const fetchCars = useCallback(async (customFilters?: CarFilter) => {
     setLoading(true);
     try {
-      const params = {
-        ...(customFilters || filters),
-        page: (customFilters || filters).page,
-        size: (customFilters || filters).size,
-        sortBy: (customFilters || filters).sortBy,
-        sortDirection: (customFilters || filters).sortDirection
-      };
+      // Формируем параметры запроса корректно для массивов
+      const filtersToUse = customFilters || filters;
+      const params = new URLSearchParams();
+      Object.entries(filtersToUse).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === "") return;
+        if (Array.isArray(value)) {
+          value.forEach((item) => {
+            if (item !== undefined && item !== null && item !== "") {
+              params.append(key, item);
+            }
+          });
+        } else {
+          params.append(key, value as any);
+        }
+      });
+      // Явно добавляем параметры пагинации и сортировки (если нужны)
+      if (!params.has("page")) params.append("page", String(filtersToUse.page ?? 0));
+      if (!params.has("size")) params.append("size", String(filtersToUse.size ?? 10));
+      if (!params.has("sortBy") && filtersToUse.sortBy) params.append("sortBy", filtersToUse.sortBy);
+      if (!params.has("sortDirection") && filtersToUse.sortDirection) params.append("sortDirection", filtersToUse.sortDirection);
+
       const response = await axios.get<ApiResponse<Car[]>>(`${API_URL}/cars`, { params });
       // Проверяем оба поля: content и data
       const carsArr = response.data?.content || response.data?.data || [];

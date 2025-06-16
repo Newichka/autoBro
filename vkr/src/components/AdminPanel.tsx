@@ -36,7 +36,9 @@ interface CustomRequest {
   make: string;
   model: string;
   year: number;
-  price: number;
+  minPrice?: number;
+  maxPrice?: number;
+  color?: string;
   trim: string;
   condition: string;
   status: 'new' | 'viewed' | 'closed';
@@ -346,7 +348,8 @@ const AdminPanel: React.FC = () => {
                             <th>Телефон</th>
                             <th>Email</th>
                             <th>Авто (Марка, Модель, Год)</th>
-                            <th>Бюджет (до)</th>
+                            <th>Бюджет (от-до)</th>
+                            <th>Цвет</th>
                             <th>Комплектация</th>
                             <th>Состояние</th>
                             <th>Статус</th>
@@ -362,7 +365,8 @@ const AdminPanel: React.FC = () => {
                               <td>{req.phone}</td>
                               <td>{req.userEmail}</td>
                               <td>{req.make} {req.model} ({req.year})</td>
-                              <td>{req.price.toLocaleString()} ₽</td>
+                              <td>{(req.minPrice ? req.minPrice.toLocaleString() : '-') + ' - ' + (req.maxPrice ? req.maxPrice.toLocaleString() : '-')} ₽</td>
+                              <td>{req.color || '-'}</td>
                               <td style={{ whiteSpace: 'pre-wrap', minWidth: '150px' }}>{req.trim}</td>
                               <td style={{ whiteSpace: 'pre-wrap', minWidth: '150px' }}>{req.condition}</td>
                               <td>

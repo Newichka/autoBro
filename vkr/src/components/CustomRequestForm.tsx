@@ -12,9 +12,11 @@ const CustomRequestForm: React.FC<CustomRequestFormProps> = ({ onClose }) => {
     make: '',
     model: '',
     year: '',
-    price: '',
-    trim: '', // Комплектация
-    condition: '', // Состояние
+    minPrice: '', // Новый бюджет от
+    maxPrice: '', // Новый бюджет до
+    color: '',    // Новый цвет
+    trim: '',
+    condition: '',
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -60,15 +62,17 @@ const CustomRequestForm: React.FC<CustomRequestFormProps> = ({ onClose }) => {
 
       await axios.post('http://localhost:3001/custom-requests', {
         ...formData,
-        userId: currentUser.id, // Corrected: Use currentUser.id instead of currentUser.uid
+        userId: currentUser.id,
         userEmail: currentUser.email,
         fullName: userFullName,
         phone: userPhone,
-        year: formData.year ? parseInt(formData.year, 10) : undefined, // Ensure year is number or undefined
-        price: formData.price ? parseFloat(formData.price) : undefined, // Ensure price is number or undefined
+        year: formData.year ? parseInt(formData.year, 10) : undefined,
+        minPrice: formData.minPrice ? parseFloat(formData.minPrice) : undefined,
+        maxPrice: formData.maxPrice ? parseFloat(formData.maxPrice) : undefined,
+        color: formData.color || undefined,
       });
       setSuccess(true);
-      setFormData({ make: '', model: '', year: '', price: '', trim: '', condition: '' }); // Reset form
+      setFormData({ make: '', model: '', year: '', minPrice: '', maxPrice: '', color: '', trim: '', condition: '' }); // Reset form
       setTimeout(() => {
         onClose(); // Close form after a delay
       }, 2500);
@@ -102,13 +106,21 @@ const CustomRequestForm: React.FC<CustomRequestFormProps> = ({ onClose }) => {
                 <label htmlFor="model" className="form-label">Модель</label>
                 <input type="text" className="form-control" id="model" name="model" value={formData.model} onChange={handleChange} required placeholder="Например, Camry" />
               </div>
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label htmlFor="year" className="form-label">Год выпуска (желаемый)</label>
                 <input type="number" className="form-control" id="year" name="year" value={formData.year} onChange={handleChange} required placeholder="Например, 2020" min="1900" max={new Date().getFullYear() + 1} />
               </div>
+              <div className="col-md-4">
+                <label htmlFor="minPrice" className="form-label">Бюджет от (₽)</label>
+                <input type="number" className="form-control" id="minPrice" name="minPrice" value={formData.minPrice} onChange={handleChange} required placeholder="Например, 1000000" min="0" />
+              </div>
+              <div className="col-md-4">
+                <label htmlFor="maxPrice" className="form-label">Бюджет до (₽)</label>
+                <input type="number" className="form-control" id="maxPrice" name="maxPrice" value={formData.maxPrice} onChange={handleChange} required placeholder="Например, 2000000" min="0" />
+              </div>
               <div className="col-md-6">
-                <label htmlFor="price" className="form-label">Бюджет (до, ₽)</label>
-                <input type="number" className="form-control" id="price" name="price" value={formData.price} onChange={handleChange} required placeholder="Например, 2000000" min="0" />
+                <label htmlFor="color" className="form-label">Желаемый цвет</label>
+                <input type="text" className="form-control" id="color" name="color" value={formData.color} onChange={handleChange} placeholder="Например, черный, белый" />
               </div>
               <div className="col-12">
                 <label htmlFor="trim" className="form-label">Комплектация (описание)</label>

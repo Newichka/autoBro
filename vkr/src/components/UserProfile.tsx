@@ -45,7 +45,9 @@ interface CustomRequest {
   make: string;
   model: string;
   year?: number;
-  price?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  color?: string;
   trim?: string;
   condition?: string;
   status: string;
@@ -428,6 +430,7 @@ const UserProfile: React.FC = () => {
                         <th>Модель</th>
                         <th>Год</th>
                         <th>Бюджет</th>
+                        <th>Цвет</th>
                         <th>Комплектация</th>
                         <th>Состояние</th>
                         <th>Статус</th>
@@ -440,7 +443,8 @@ const UserProfile: React.FC = () => {
                           <td>{req.make}</td>
                           <td>{req.model}</td>
                           <td>{req.year || '-'}</td>
-                          <td>{req.price ? req.price.toLocaleString() + ' ₽' : '-'}</td>
+                          <td>{(req.minPrice ? req.minPrice.toLocaleString() : '-') + ' - ' + (req.maxPrice ? req.maxPrice.toLocaleString() : '-')} ₽</td>
+                          <td>{req.color || '-'}</td>
                           <td>{req.trim || '-'}</td>
                           <td>{req.condition || '-'}</td>
                           <td><span className="badge bg-secondary">{req.status || 'В обработке'}</span></td>

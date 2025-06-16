@@ -12,7 +12,7 @@ const AboutPage: React.FC = () => {
             <p>Наша компания была основана с целью предоставить клиентам не только качественные автомобили, но и полное сопровождение на всех этапах сделки.</p>
           </div>
           <div className="col-md-6">
-            <img src="https://cdn.pixabay.com/photo/2017/01/06/19/15/auto-1957037_1280.jpg" alt="О нас" className="img-fluid rounded shadow-lg" />
+            <img src="/car.png" alt="О нас" className="img-fluid rounded" />
           </div>
         </div>
         <div className="row mb-5">
