@@ -54,6 +54,18 @@ interface CustomRequest {
   createdAt: string;
 }
 
+// Функция для нормализации url фото
+const normalizePhotoUrl = (url?: string) => {
+  if (!url) return '/car.png';
+  if (url.startsWith('http://localhost:5000/uploads/')) {
+    return url.replace('http://localhost:5000', 'http://localhost:8080');
+  }
+  if (url.startsWith('/uploads/')) {
+    return 'http://localhost:8080' + url;
+  }
+  return url;
+};
+
 const UserProfile: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const location = useLocation();
@@ -368,11 +380,11 @@ const UserProfile: React.FC = () => {
                             <div className="row">
                               <div className="col-md-5 mb-3 mb-md-0">
                                 <img 
-                                  src={order.carInfo.mainPhotoUrl || 'https://via.placeholder.com/300x200?text=Нет+фото'} 
+                                  src={order.carInfo.mainPhotoUrl ? normalizePhotoUrl(order.carInfo.mainPhotoUrl) : '/car.png'} 
                                   alt={`${order.carInfo.make} ${order.carInfo.model}`}
                                   className="img-fluid rounded" 
                                   style={{ width: '100%', height: '150px', objectFit: 'cover' }}
-                                  onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200?text=Нет+фото'; }}
+                                  onError={(e) => { (e.target as HTMLImageElement).src = '/car.png'; }}
                                 />
                               </div>
                               <div className="col-md-7">
