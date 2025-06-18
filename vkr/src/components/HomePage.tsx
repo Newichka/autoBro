@@ -11,7 +11,7 @@ const HomePage: React.FC = () => {
         <div className="row align-items-center">
           <div className="col-md-6 mb-4 mb-md-0">
             <h1 className="display-4 fw-bold mb-3">Добро пожаловать в <span style={{color: 'var(--accent)'}}>AutoBro</span>!</h1>
-            <p className="lead mb-4">Платформа для подбора, покупки и бронирования автомобилей с гарантией качества и прозрачными условиями.</p>
+            <p className="lead mb-4">Платформа для подбора, покупки и доставки автомобилей с гарантией качества и прозрачными условиями.</p>
             <button className="btn btn-primary btn-lg px-4" onClick={() => navigate('/cars')}>
               Перейти в каталог
               <i className="bi bi-arrow-right ms-2"></i>

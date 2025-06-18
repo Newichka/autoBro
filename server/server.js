@@ -203,7 +203,18 @@ app.delete("/orders/:id", (req, res) => {
 
 // Получить все пользовательские заявки (для админа)
 app.get("/custom-requests", (req, res) => {
-  const requests = db.get("custom_requests").orderBy("createdAt", "desc").value();
+  const { userId } = req.query;
+  let requests;
+  if (userId) {
+    requests = db.get("custom_requests")
+      .filter({ userId })
+      .orderBy("createdAt", "desc")
+      .value();
+  } else {
+    requests = db.get("custom_requests")
+      .orderBy("createdAt", "desc")
+      .value();
+  }
   res.json(requests);
 });
 
@@ -240,6 +251,8 @@ app.post("/custom-requests", (req, res) => {
     trim,
     condition,
     status: "new",
+    userResponse: null,
+    suggestedCarUrl: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -247,41 +260,46 @@ app.post("/custom-requests", (req, res) => {
   res.status(201).json({ message: "Ваша заявка принята", request: newRequest });
 });
 
-// Обновить статус пользовательской заявки (для админа)
+// Обновить пользовательскую заявку
 app.put("/custom-requests/:id", (req, res) => {
-  const { status, suggestedCarUrl } = req.body;
-  const requestId = req.params.id;
-  const request = db.get("custom_requests").find({ id: requestId }).value();
+  const { status, suggestedCarUrl, userResponse } = req.body;
+  const request = db.get("custom_requests").find({ id: req.params.id }).value();
+  
   if (!request) {
     return res.status(404).json({ message: "Заявка не найдена" });
   }
+
   const allowedStatuses = ["new", "viewed", "closed"];
   if (status && !allowedStatuses.includes(status)) {
     return res.status(400).json({ message: "Недопустимый статус заявки" });
   }
+
+  const allowedResponses = ["accepted", "rejected", null];
+  if (userResponse !== undefined && !allowedResponses.includes(userResponse)) {
+    return res.status(400).json({ message: "Недопустимый ответ пользователя" });
+  }
+
   const updateData = { updatedAt: new Date().toISOString() };
   if (status) updateData.status = status;
   if (suggestedCarUrl !== undefined) updateData.suggestedCarUrl = suggestedCarUrl;
-  db.get("custom_requests")
-    .find({ id: requestId })
-    .assign(updateData)
-    .write();
-  res.json({ message: "Статус заявки обновлен", request: db.get("custom_requests").find({ id: requestId }).value() });
+  if (userResponse !== undefined) updateData.userResponse = userResponse;
+
+  db.get("custom_requests").find({ id: req.params.id }).assign(updateData).write();
+  res.json({ 
+    message: "Заявка обновлена", 
+    request: db.get("custom_requests").find({ id: req.params.id }).value() 
+  });
 });
 
-// Удалить пользовательскую заявку (для админа)
+// Удалить пользовательскую заявку
 app.delete("/custom-requests/:id", (req, res) => {
-  const requestId = req.params.id;
-  const request = db.get("custom_requests").find({ id: requestId }).value();
-  
+  const request = db.get("custom_requests").find({ id: req.params.id }).value();
   if (!request) {
     return res.status(404).json({ message: "Заявка не найдена" });
   }
-  
-  db.get("custom_requests").remove({ id: requestId }).write();
+  db.get("custom_requests").remove({ id: req.params.id }).write();
   res.json({ message: "Заявка удалена" });
 });
-
 
 // Запуск сервера
 app.listen(PORT, "0.0.0.0", () => {

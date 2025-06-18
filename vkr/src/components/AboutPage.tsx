@@ -37,7 +37,7 @@ const AboutPage: React.FC = () => {
                 <div className="card border-0 shadow-sm text-center p-4">
                   <img src="https://randomuser.me/api/portraits/men/65.jpg" alt="team3" className="rounded-circle mb-3" width={100} height={100} />
                   <h5 className="fw-bold">Алексей Смирнов</h5>
-                  <p className="text-muted">COO</p>
+                  <p className="text-muted">Водитель</p>
                 </div>
               </div>
             </div>

@@ -45,6 +45,7 @@ interface CustomRequest {
   status: 'new' | 'viewed' | 'closed';
   createdAt: string;
   suggestedCarUrl?: string;
+  userResponse?: 'accepted' | 'rejected' | null;
 }
 type CustomRequestStatus = 'new' | 'viewed' | 'closed';
 
@@ -246,6 +247,34 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  // Handle user response to suggested car
+  const handleUserResponse = async (requestId: string, response: 'accepted' | 'rejected') => {
+    try {
+      await axios.put(`http://localhost:3001/custom-requests/${requestId}`, { userResponse: response });
+      fetchCustomRequests();
+    } catch (error) {
+      console.error('Ошибка при сохранении ответа пользователя:', error);
+    }
+  };
+
+  // Get user response text
+  const getUserResponseText = (response?: 'accepted' | 'rejected' | null) => {
+    switch (response) {
+      case 'accepted': return 'Подходит';
+      case 'rejected': return 'Не подходит';
+      default: return 'Ожидает ответа';
+    }
+  };
+
+  // Get user response badge class
+  const getUserResponseBadgeClass = (response?: 'accepted' | 'rejected' | null) => {
+    switch (response) {
+      case 'accepted': return 'bg-success';
+      case 'rejected': return 'bg-danger';
+      default: return 'bg-secondary';
+    }
+  };
+
   return (
     <div className="container mt-4">
       <div className="row">
@@ -429,84 +458,106 @@ const AdminPanel: React.FC = () => {
                   ) : customRequests.length === 0 ? (
                     <div className="alert alert-info">Пользовательские заявки отсутствуют</div>
                   ) : (
-                    <div className="table-responsive">
-                      <table className="table table-hover align-middle">
-                        <thead>
+                    <div className="table-responsive" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+                      <table className="table table-hover align-middle" style={{ fontSize: '0.9rem' }}>
+                        <thead className="sticky-top bg-light">
                           <tr>
-                            <th>ID Заявки</th>
-                            <th>Клиент</th>
-                            <th>Телефон</th>
-                            <th>Email</th>
-                            <th>Авто (Марка, Модель, Год)</th>
-                            <th>Бюджет (от-до)</th>
-                            <th>Цвет</th>
-                            <th>Комплектация</th>
-                            <th>Состояние</th>
-                            <th>Статус</th>
-                            <th>Дата</th>
-                            <th>Предложенное авто</th>
-                            <th>Действия</th>
+                            <th style={{ width: '100px' }}>Дата</th>
+                            <th style={{ width: '200px' }}>Пользователь</th>
+                            <th style={{ width: '200px' }}>Автомобиль</th>
+                            <th style={{ width: '100px' }}>Статус</th>
+                            <th style={{ width: '200px' }}>Предложенный автомобиль</th>
+                            <th style={{ width: '150px' }}>Ответ пользователя</th>
+                            <th style={{ width: '200px' }}>Действия</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {customRequests.map(req => (
-                            <tr key={req.id}>
-                              <td title={req.id}>{req.id.substring(0, 10)}...</td>
-                              <td>{req.fullName}</td>
-                              <td>{req.phone}</td>
-                              <td>{req.userEmail}</td>
-                              <td>{req.make} {req.model} ({req.year})</td>
-                              <td>{(req.minPrice ? req.minPrice.toLocaleString() : '-') + ' - ' + (req.maxPrice ? req.maxPrice.toLocaleString() : '-')} ₽</td>
-                              <td>{req.color || '-'}</td>
-                              <td style={{ whiteSpace: 'pre-wrap', minWidth: '150px' }}>{req.trim}</td>
-                              <td style={{ whiteSpace: 'pre-wrap', minWidth: '150px' }}>{req.condition}</td>
+                          {customRequests.map((request) => (
+                            <tr key={request.id}>
+                              <td>{new Date(request.createdAt).toLocaleDateString()}</td>
                               <td>
-                                <span className={`badge ${getCustomRequestStatusBadgeClass(req.status)}`}>
-                                  {getCustomRequestStatusText(req.status)}
+                                <div className="text-truncate" title={request.fullName}>{request.fullName}</div>
+                                <div className="text-truncate" title={request.phone}>{request.phone}</div>
+                                <div className="text-truncate" title={request.userEmail}>{request.userEmail}</div>
+                              </td>
+                              <td>
+                                <div className="text-truncate" title={`${request.make} ${request.model}`}>{request.make} {request.model}</div>
+                                <div>{request.year} г.</div>
+                                <div className="text-truncate" title={request.trim}>{request.trim}</div>
+                                <div className="text-truncate" title={request.condition}>{request.condition}</div>
+                                {request.minPrice && request.maxPrice && (
+                                  <div>Цена: {request.minPrice} - {request.maxPrice} $</div>
+                                )}
+                                {request.color && <div>Цвет: {request.color}</div>}
+                              </td>
+                              <td>
+                                <span className={`badge ${getCustomRequestStatusBadgeClass(request.status)}`}>
+                                  {getCustomRequestStatusText(request.status)}
                                 </span>
                               </td>
-                              <td>{new Date(req.createdAt).toLocaleDateString()}</td>
-                              <td style={{ maxWidth: 220, wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>
+                              <td>
                                 <input
-                                  type="url"
+                                  type="text"
                                   className="form-control form-control-sm"
-                                  style={{ minWidth: 120, maxWidth: 220, fontSize: 13 }}
-                                  value={req.suggestedCarUrl || ''}
-                                  placeholder="https://..."
-                                  onChange={e => handleSuggestedCarUrlChange(req.id, e.target.value)}
-                                  onBlur={e => saveSuggestedCarUrl(req.id, e.target.value)}
-                                  onKeyDown={e => { if (e.key === 'Enter') { saveSuggestedCarUrl(req.id, e.currentTarget.value); e.currentTarget.blur(); } }}
+                                  value={request.suggestedCarUrl || ''}
+                                  onChange={(e) => handleSuggestedCarUrlChange(request.id, e.target.value)}
+                                  onBlur={(e) => saveSuggestedCarUrl(request.id, e.target.value)}
+                                  placeholder="Ссылка на предложенный автомобиль"
                                 />
-                                {req.suggestedCarUrl && (
-                                  <a href={req.suggestedCarUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#1a5fb4', wordBreak: 'break-all', display: 'block', marginTop: 2 }}>
-                                    {req.suggestedCarUrl}
+                                {request.suggestedCarUrl && (
+                                  <a
+                                    href={request.suggestedCarUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="d-block text-truncate mt-1"
+                                    style={{ fontSize: '0.8rem' }}
+                                  >
+                                    {request.suggestedCarUrl}
                                   </a>
                                 )}
                               </td>
                               <td>
-                                <div className="d-flex flex-column flex-sm-row gap-1">
-                                  <div className="dropdown">
-                                    <button className="btn btn-sm btn-outline-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                      Статус
+                                <span className={`badge ${getUserResponseBadgeClass(request.userResponse)}`}>
+                                  {getUserResponseText(request.userResponse)}
+                                </span>
+                                {request.suggestedCarUrl && !request.userResponse && (
+                                  <div className="mt-2 d-flex gap-1">
+                                    <button
+                                      className="btn btn-success btn-sm flex-grow-1"
+                                      onClick={() => handleUserResponse(request.id, 'accepted')}
+                                    >
+                                      Подходит
                                     </button>
-                                    <ul className="dropdown-menu dropdown-menu-end">
-                                      {req.status !== 'viewed' && (
-                                        <li><button className="dropdown-item" onClick={() => handleCustomRequestStatusChange(req.id, 'viewed')}><i className="bi bi-eye me-2"></i>Просмотрена</button></li>
-                                      )}
-                                      {req.status !== 'closed' && (
-                                        <li><button className="dropdown-item" onClick={() => handleCustomRequestStatusChange(req.id, 'closed')}><i className="bi bi-check-circle me-2"></i>Закрыта</button></li>
-                                      )}
-                                      {req.status !== 'new' && (
-                                        <li><button className="dropdown-item" onClick={() => handleCustomRequestStatusChange(req.id, 'new')}><i className="bi bi-arrow-counterclockwise me-2"></i>Вернуть в новые</button></li>
-                                      )}
-                                    </ul>
+                                    <button
+                                      className="btn btn-danger btn-sm flex-grow-1"
+                                      onClick={() => handleUserResponse(request.id, 'rejected')}
+                                    >
+                                      Не подходит
+                                    </button>
                                   </div>
+                                )}
+                              </td>
+                              <td>
+                                <div className="btn-group">
                                   <button
-                                    className="btn btn-sm btn-outline-danger w-100 mt-1 mt-sm-0"
-                                    onClick={() => handleCustomRequestDelete(req.id)}
-                                    title="Удалить заявку"
+                                    className="btn btn-sm btn-outline-primary"
+                                    onClick={() => handleCustomRequestStatusChange(request.id, 'viewed')}
+                                    disabled={request.status === 'viewed'}
                                   >
-                                    <i className="bi bi-trash"></i>
+                                    Просмотрено
+                                  </button>
+                                  <button
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={() => handleCustomRequestStatusChange(request.id, 'closed')}
+                                    disabled={request.status === 'closed'}
+                                  >
+                                    Закрыть
+                                  </button>
+                                  <button
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={() => handleCustomRequestDelete(request.id)}
+                                  >
+                                    Удалить
                                   </button>
                                 </div>
                               </td>

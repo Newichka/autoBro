@@ -19,7 +19,7 @@ const ContactPage: React.FC = () => {
             </div>
             <div className="mb-3">
               <i className="bi bi-geo-alt me-2"></i>
-              <span>г. Москва, ул. Примерная, д. 1</span>
+              <span>г. Екатеринбург, пер. Еловский, д. 38</span>
             </div>
           </div>
           <div className="col-md-6">
@@ -46,7 +46,7 @@ const ContactPage: React.FC = () => {
             <h2 className="text-center mb-4">Наше местоположение</h2>
             <div className="card border-0 shadow-sm">
               <iframe 
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2245.3727899448134!2d37.6184233!3d55.7558263!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNTXCsDQ1JzIxLjAiTiAzN8KwMzcnMDYuMyJF!5e0!3m2!1sen!2sru!4v1620000000000!5m2!1sen!2sru" 
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d770.073187052598!2d60.60460444285456!3d56.912885305511544!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x43c1726a2fe3a021%3A0xe5a714a02f8b035d!2z0JXQu9C-0LLRgdC60LjQuSDQv9C10YAuLCAzOCwg0JXQutCw0YLQtdGA0LjQvdCx0YPRgNCzLCDQodCy0LXRgNC00LvQvtCy0YHQutCw0Y8g0L7QsdC7LiwgNjIwMDk4!5e0!3m2!1sru!2sru!4v1750258221779!5m2!1sru!2sru" 
                 width="100%" 
                 height="450" 
                 style={{ border: 0 }} 

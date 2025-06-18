@@ -54,6 +54,7 @@ interface CustomRequest {
   status: string;
   createdAt: string;
   suggestedCarUrl?: string;
+  userResponse?: 'accepted' | 'rejected' | null;
 }
 
 // Функция для нормализации url фото
@@ -266,6 +267,38 @@ const UserProfile: React.FC = () => {
     }
   };
 
+  // Добавим функцию для обработки ответа пользователя
+  const handleUserResponse = async (requestId: string, response: 'accepted' | 'rejected') => {
+    try {
+      await axios.put(`http://localhost:3001/custom-requests/${requestId}`, { userResponse: response });
+      // Обновляем список заявок после ответа
+      const updatedResponse = await axios.get<CustomRequest[]>(`http://localhost:3001/custom-requests?userId=${currentUser?.id}`);
+      if (Array.isArray(updatedResponse.data)) {
+        setUserRequests(updatedResponse.data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      }
+    } catch (error) {
+      console.error('Ошибка при сохранении ответа:', error);
+    }
+  };
+
+  // Добавим функцию для получения текста ответа
+  const getUserResponseText = (response?: 'accepted' | 'rejected' | null) => {
+    switch (response) {
+      case 'accepted': return 'Подходит';
+      case 'rejected': return 'Не подходит';
+      default: return 'Ожидает ответа';
+    }
+  };
+
+  // Добавим функцию для получения класса бейджа ответа
+  const getUserResponseBadgeClass = (response?: 'accepted' | 'rejected' | null) => {
+    switch (response) {
+      case 'accepted': return 'bg-success';
+      case 'rejected': return 'bg-danger';
+      default: return 'bg-secondary';
+    }
+  };
+
   if (!currentUser) {
     return (
       <div className="container mt-5">
@@ -431,50 +464,89 @@ const UserProfile: React.FC = () => {
 
           {/* My Requests Tab */}
           {activeTab === 'my-requests' && (
-            <div>
-              <h5 className="mb-3">Мои заявки на подбор</h5>
+            <div className="container mt-4">
+              <h2>Мои заявки на подбор</h2>
               {loadingRequests ? (
-                <div className="text-center p-4"><div className="spinner-border text-primary" role="status"></div></div>
+                <div className="text-center">
+                  <div className="spinner-border" role="status">
+                    <span className="visually-hidden">Загрузка...</span>
+                  </div>
+                </div>
               ) : requestsError ? (
                 <div className="alert alert-danger">{requestsError}</div>
               ) : userRequests.length === 0 ? (
-                <div className="alert alert-info">У вас пока нет заявок на подбор.</div>
+                <div className="alert alert-info">У вас пока нет заявок на подбор</div>
               ) : (
                 <div className="table-responsive">
                   <table className="table table-hover align-middle">
                     <thead>
                       <tr>
-                        <th>Марка</th>
-                        <th>Модель</th>
-                        <th>Год</th>
-                        <th>Бюджет</th>
-                        <th>Цвет</th>
-                        <th>Комплектация</th>
-                        <th>Состояние</th>
-                        <th>Статус</th>
                         <th>Дата</th>
-                        <th>Предложенное авто</th>
+                        <th>Автомобиль</th>
+                        <th>Статус</th>
+                        <th>Предложенный автомобиль</th>
+                        <th>Ваш ответ</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {userRequests.map(req => (
-                        <tr key={req.id}>
-                          <td>{req.make}</td>
-                          <td>{req.model}</td>
-                          <td>{req.year || '-'}</td>
-                          <td>{(req.minPrice ? req.minPrice.toLocaleString() : '-') + ' - ' + (req.maxPrice ? req.maxPrice.toLocaleString() : '-')} ₽</td>
-                          <td>{req.color || '-'}</td>
-                          <td>{req.trim || '-'}</td>
-                          <td>{req.condition || '-'}</td>
-                          <td><span className="badge bg-secondary">{req.status || 'В обработке'}</span></td>
-                          <td>{new Date(req.createdAt).toLocaleDateString()}</td>
-                          <td style={{ maxWidth: 220, wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>
-                            {req.suggestedCarUrl ? (
-                              <a href={req.suggestedCarUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#1a5fb4', wordBreak: 'break-all', display: 'block' }}>
-                                {req.suggestedCarUrl}
-                              </a>
+                      {userRequests.map((request) => (
+                        <tr key={request.id}>
+                          <td>{new Date(request.createdAt).toLocaleDateString()}</td>
+                          <td>
+                            <div>{request.make} {request.model}</div>
+                            {request.year && <div>{request.year} г.</div>}
+                            {request.trim && <div>{request.trim}</div>}
+                            {request.condition && <div>{request.condition}</div>}
+                            {request.minPrice && request.maxPrice && (
+                              <div>Цена: {request.minPrice} - {request.maxPrice} $</div>
+                            )}
+                            {request.color && <div>Цвет: {request.color}</div>}
+                          </td>
+                          <td>
+                            <span className={`badge ${getStatusBadgeClass(request.status as OrderStatus)}`}>
+                              {getStatusText(request.status as OrderStatus)}
+                            </span>
+                          </td>
+                          <td>
+                            {request.suggestedCarUrl ? (
+                              <div>
+                                <a
+                                  href={request.suggestedCarUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary"
+                                >
+                                  Посмотреть предложенный автомобиль
+                                </a>
+                              </div>
                             ) : (
-                              <span className="text-muted" style={{ fontSize: 13 }}>—</span>
+                              <span className="text-muted">Ожидаем предложение</span>
+                            )}
+                          </td>
+                          <td>
+                            {request.suggestedCarUrl ? (
+                              request.userResponse ? (
+                                <span className={`badge ${getUserResponseBadgeClass(request.userResponse)}`}>
+                                  {getUserResponseText(request.userResponse)}
+                                </span>
+                              ) : (
+                                <div className="d-flex gap-2">
+                                  <button
+                                    className="btn btn-success btn-sm"
+                                    onClick={() => handleUserResponse(request.id, 'accepted')}
+                                  >
+                                    Подходит
+                                  </button>
+                                  <button
+                                    className="btn btn-danger btn-sm"
+                                    onClick={() => handleUserResponse(request.id, 'rejected')}
+                                  >
+                                    Не подходит
+                                  </button>
+                                </div>
+                              )
+                            ) : (
+                              <span className="text-muted">-</span>
                             )}
                           </td>
                         </tr>
