@@ -138,9 +138,9 @@ app.get("/orders/user/:uid", (req, res) => {
 });
 
 app.post("/orders", (req, res) => {
-  const { uid, userEmail, fullName, phone, country, city, address, carId, carInfo, status } = req.body;
+  const { uid, userEmail, fullName, phone, country, city, address, carId, carInfo, status, deliveryPrice } = req.body;
   
-  console.log('Получены данные заказа:', { uid, userEmail, fullName, phone, country, city, address, carId, carInfo, status });
+  console.log('Получены данные заказа:', { uid, userEmail, fullName, phone, country, city, address, carId, carInfo, status, deliveryPrice });
   
   // Проверяем наличие всех необходимых данных
   if (!uid || !userEmail || !fullName || !phone || !carId || !carInfo) {
@@ -162,6 +162,7 @@ app.post("/orders", (req, res) => {
     carId,
     carInfo,
     status: status || "new",
+    deliveryPrice: deliveryPrice !== undefined ? deliveryPrice : undefined,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -173,16 +174,19 @@ app.post("/orders", (req, res) => {
 });
 
 app.put("/orders/:id", (req, res) => {
-  const { status } = req.body;
+  const { status, deliveryPrice } = req.body;
   const order = db.get("orders").find({ id: req.params.id }).value();
   if (!order) {
     return res.status(404).json({ message: "Заказ не найден" });
   }
-  const allowedStatuses = ["new", "processing", "in_transit", "completed", "cancelled"];
+  const allowedStatuses = ["new", "processing", "in_transit", "completed", "cancelled", "awaiting_prepayment", "prepayment_received", "processing_docs"];
   if (status && !allowedStatuses.includes(status)) {
     return res.status(400).json({ message: "Недопустимый статус заказа" });
   }
-  db.get("orders").find({ id: req.params.id }).assign({ status, updatedAt: new Date().toISOString() }).write();
+  const updateData = { updatedAt: new Date().toISOString() };
+  if (status) updateData.status = status;
+  if (deliveryPrice !== undefined) updateData.deliveryPrice = deliveryPrice;
+  db.get("orders").find({ id: req.params.id }).assign(updateData).write();
   res.json({ message: "Статус заказа обновлен", order: db.get("orders").find({ id: req.params.id }).value() });
 });
 

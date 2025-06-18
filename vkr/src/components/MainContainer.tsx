@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import Filter from './Filter';
 import OrderModal from './OrderModal';
+import AuthModal from './AuthModal';
 
 import CustomRequestForm from './CustomRequestForm'; // Import the new form
 import { useAuth } from '../firebase/AuthContext';
@@ -170,6 +171,8 @@ const MainContainer: React.FC = () => {
 
   // State to store all active orders (NEW)
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
+
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Функция для фильтрации машин в зависимости от роли пользователя
   const filterCarsByUserRole = useCallback((cars: Car[]): Car[] => {
@@ -658,6 +661,20 @@ const MainContainer: React.FC = () => {
     return url;
   };
 
+  const handleSortFieldChange = (field: string) => {
+    setFilters(prev => ({
+      ...prev,
+      sortBy: field
+    }));
+  };
+
+  const handleSortDirectionChange = (direction: 'asc' | 'desc') => {
+    setFilters(prev => ({
+      ...prev,
+      sortDirection: direction
+    }));
+  };
+
   return (
     <div className="container-fluid mt-3">
       {/* Filter Section - Now takes full width */}
@@ -730,14 +747,14 @@ const MainContainer: React.FC = () => {
                 {showSortDropdown && (
                   <div className="dropdown-menu dropdown-menu-end show position-absolute" style={{ zIndex: 1050 }}>
                     <h6 className="dropdown-header">По полю</h6>
-                    <button className={`dropdown-item ${filters.sortBy === 'createdAt' ? 'active' : ''}`} onClick={() => handleSortChange('asc')}>Дата добавления</button>
-                    <button className={`dropdown-item ${filters.sortBy === 'price' ? 'active' : ''}`} onClick={() => handleSortChange('desc')}>Цена</button>
-                    <button className={`dropdown-item ${filters.sortBy === 'year' ? 'active' : ''}`} onClick={() => handleSortChange('asc')}>Год выпуска</button>
-                    <button className={`dropdown-item ${filters.sortBy === 'mileage' ? 'active' : ''}`} onClick={() => handleSortChange('desc')}>Пробег</button>
+                    <button className={`dropdown-item ${filters.sortBy === 'createdAt' ? 'active' : ''}`} onClick={() => handleSortFieldChange('createdAt')}>Дата добавления</button>
+                    <button className={`dropdown-item ${filters.sortBy === 'price' ? 'active' : ''}`} onClick={() => handleSortFieldChange('price')}>Цена</button>
+                    <button className={`dropdown-item ${filters.sortBy === 'year' ? 'active' : ''}`} onClick={() => handleSortFieldChange('year')}>Год выпуска</button>
+                    <button className={`dropdown-item ${filters.sortBy === 'mileage' ? 'active' : ''}`} onClick={() => handleSortFieldChange('mileage')}>Пробег</button>
                     <div className="dropdown-divider"></div>
                     <h6 className="dropdown-header">По направлению</h6>
-                    <button className={`dropdown-item ${filters.sortDirection === 'desc' ? 'active' : ''}`} onClick={() => handleSortChange('desc')}>По убыванию</button>
-                    <button className={`dropdown-item ${filters.sortDirection === 'asc' ? 'active' : ''}`} onClick={() => handleSortChange('asc')}>По возрастанию</button>
+                    <button className={`dropdown-item ${filters.sortDirection === 'desc' ? 'active' : ''}`} onClick={() => handleSortDirectionChange('desc')}>По убыванию</button>
+                    <button className={`dropdown-item ${filters.sortDirection === 'asc' ? 'active' : ''}`} onClick={() => handleSortDirectionChange('asc')}>По возрастанию</button>
                   </div>
                 )}
               </div>
@@ -810,7 +827,7 @@ const MainContainer: React.FC = () => {
                           </div>
                         )}
                         {/* Order Button - Disable if car is in active order */} 
-                        {currentUser && (
+                        {!isAdmin && currentUser && (
                           <button 
                             className={`btn btn-sm order-button w-100 mt-1 ${isCarInActiveOrder(car.id) ? 'btn-secondary disabled' : 'btn-success'}`}
                             onClick={(e) => handleOrderClick(e, car)}
@@ -818,6 +835,15 @@ const MainContainer: React.FC = () => {
                             title={isCarInActiveOrder(car.id) ? "Автомобиль уже заказан" : "Оформить заказ на этот автомобиль"}
                           >
                             {isCarInActiveOrder(car.id) ? <><i className="bi bi-bag-check-fill me-1"></i> Заказан</> : <><i className="bi bi-cart-plus me-1"></i> Заказать</>}
+                          </button>
+                        )}
+                        {!isAdmin && !currentUser && (
+                          <button 
+                            className="btn btn-sm btn-success order-button w-100 mt-1"
+                            onClick={(e) => { e.stopPropagation(); setShowAuthModal(true); }}
+                            title="Войдите, чтобы заказать автомобиль"
+                          >
+                            <i className="bi bi-cart-plus me-1"></i> Заказать
                           </button>
                         )}
                       </div>
@@ -1062,6 +1088,8 @@ const MainContainer: React.FC = () => {
           <i className="bi bi-arrow-up"></i>
         </button>
       )}
+
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
     </div>
   );
 };

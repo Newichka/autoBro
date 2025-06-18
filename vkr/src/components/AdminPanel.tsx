@@ -21,10 +21,11 @@ interface Order {
     price: number;
     mainPhotoUrl?: string;
   };
-  status: 'new' | 'processing' | 'in_transit' | 'completed' | 'cancelled';
+  status: 'new' | 'processing' | 'in_transit' | 'completed' | 'cancelled' | 'awaiting_prepayment' | 'prepayment_received' | 'processing_docs';
+  deliveryPrice?: number;
   createdAt: string;
 }
-type OrderStatus = 'new' | 'processing' | 'in_transit' | 'completed' | 'cancelled';
+type OrderStatus = 'new' | 'processing' | 'in_transit' | 'completed' | 'cancelled' | 'awaiting_prepayment' | 'prepayment_received' | 'processing_docs';
 
 // Interface for Custom Requests
 interface CustomRequest {
@@ -155,6 +156,9 @@ const AdminPanel: React.FC = () => {
       case 'in_transit': return 'bg-info text-dark';
       case 'completed': return 'bg-success';
       case 'cancelled': return 'bg-danger';
+      case 'awaiting_prepayment': return 'bg-secondary';
+      case 'prepayment_received': return 'bg-info';
+      case 'processing_docs': return 'bg-dark';
       default: return 'bg-secondary';
     }
   };
@@ -165,6 +169,9 @@ const AdminPanel: React.FC = () => {
       case 'in_transit': return 'В пути';
       case 'completed': return 'Выполнен';
       case 'cancelled': return 'Отменен';
+      case 'awaiting_prepayment': return 'Ожидает предоплаты';
+      case 'prepayment_received': return 'Внесена предоплата';
+      case 'processing_docs': return 'На оформлении';
       default: return 'Неизвестно';
     }
   };
@@ -184,6 +191,30 @@ const AdminPanel: React.FC = () => {
       case 'viewed': return 'Просмотрена';
       case 'closed': return 'Закрыта';
       default: return 'Неизвестно';
+    }
+  };
+
+  // Добавляю обработчики для изменения и сохранения суммы доставки
+  const handleDeliveryPriceChange = (orderId: string, value: string) => {
+    setOrders(prev => prev.map(order =>
+      order.id === orderId ? { ...order, deliveryPrice: value === '' ? undefined : Number(value) } : order
+    ));
+  };
+
+  const saveDeliveryPrice = async (orderId: string, value: string) => {
+    try {
+      await axios.put(`http://localhost:3001/orders/${orderId}`, { deliveryPrice: value === '' ? undefined : Number(value) });
+      fetchOrders();
+    } catch (error) {
+      console.error('Ошибка при сохранении суммы доставки:', error);
+    }
+  };
+
+  // Обработчик нажатия Enter для input доставки
+  const handleDeliveryPriceKeyDown = (orderId: string, value: string, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      saveDeliveryPrice(orderId, value);
+      e.currentTarget.blur(); // чтобы убрать фокус после сохранения
     }
   };
 
@@ -245,7 +276,7 @@ const AdminPanel: React.FC = () => {
                   ) : orders.length === 0 ? (
                     <div className="alert alert-info">Заказы отсутствуют</div>
                   ) : (
-                    <div className="table-responsive">
+                    <div className="table-responsive" style={{ minHeight: '80vh', overflowX: 'auto' }}>
                       <table className="table table-hover align-middle">
                         <thead>
                           <tr>
@@ -257,6 +288,8 @@ const AdminPanel: React.FC = () => {
                             <th>Адрес</th>
                             <th>Автомобиль</th>
                             <th>Цена</th>
+                            <th>Доставка</th>
+                            <th>Итого</th>
                             <th>Статус</th>
                             <th>Действия</th>
                           </tr>
@@ -269,7 +302,7 @@ const AdminPanel: React.FC = () => {
                               <td>{order.phone}</td>
                               <td>{order.country}</td>
                               <td>{order.city}</td>
-                              <td>{order.address}</td>
+                              <td style={{ maxWidth: 180, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{order.address}</td>
                               <td>
                                 <div className="d-flex align-items-center">
                                   {order.carInfo.mainPhotoUrl && (
@@ -287,6 +320,24 @@ const AdminPanel: React.FC = () => {
                               </td>
                               <td>{order.carInfo.price.toLocaleString()} ₽</td>
                               <td>
+                                {order.status === 'processing' ? (
+                                  <input
+                                    type="number"
+                                    className="form-control form-control-sm"
+                                    style={{ width: 100 }}
+                                    value={order.deliveryPrice ?? ''}
+                                    min={0}
+                                    placeholder="₽"
+                                    onChange={e => handleDeliveryPriceChange(order.id, e.target.value)}
+                                    onBlur={e => saveDeliveryPrice(order.id, e.target.value)}
+                                    onKeyDown={e => handleDeliveryPriceKeyDown(order.id, (e.target as HTMLInputElement).value, e)}
+                                  />
+                                ) : (
+                                  order.deliveryPrice ? `${order.deliveryPrice.toLocaleString()} ₽` : '-'
+                                )}
+                              </td>
+                              <td>{(order.carInfo.price + (order.deliveryPrice || 0)).toLocaleString()} ₽</td>
+                              <td>
                                 <span className={`badge ${getOrderStatusBadgeClass(order.status)}`}>
                                   {getOrderStatusText(order.status)}
                                 </span>
@@ -299,6 +350,15 @@ const AdminPanel: React.FC = () => {
                                   <ul className="dropdown-menu dropdown-menu-end">
                                     {order.status !== 'processing' && order.status !== 'completed' && order.status !== 'cancelled' && (
                                       <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'processing')}><i className="bi bi-arrow-repeat me-2"></i>В обработку</button></li>
+                                    )}
+                                    {order.status !== 'awaiting_prepayment' && (
+                                      <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'awaiting_prepayment')}><i className="bi bi-hourglass-split me-2"></i>Ожидает предоплаты</button></li>
+                                    )}
+                                    {order.status !== 'prepayment_received' && (
+                                      <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'prepayment_received')}><i className="bi bi-cash-coin me-2"></i>Внесена предоплата</button></li>
+                                    )}
+                                    {order.status !== 'processing_docs' && (
+                                      <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'processing_docs')}><i className="bi bi-file-earmark-text me-2"></i>На оформлении</button></li>
                                     )}
                                     {order.status === 'processing' && (
                                       <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'in_transit')}><i className="bi bi-truck me-2"></i>В пути</button></li>

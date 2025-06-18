@@ -42,9 +42,10 @@
         "price": 2850000,
         "mainPhotoUrl": "https://placehold.co/600x400/eeeeee/333333?text=VW+Tiguan+2020"
       },
-      "status": "processing",
       "createdAt": "2025-06-10T16:26:07.567Z",
-      "updatedAt": "2025-06-10T16:42:08.075Z"
+      "updatedAt": "2025-06-18T10:44:22.424Z",
+      "status": "processing",
+      "deliveryPrice": 200000
     },
     {
       "id": "1750241482686",
@@ -64,9 +65,9 @@
         "price": 1000000,
         "mainPhotoUrl": "/uploads/cars/91/4bf5a038-b8a6-4344-a7bb-08edc45dd1a1.jpg"
       },
-      "status": "new",
+      "status": "processing",
       "createdAt": "2025-06-18T10:11:22.686Z",
-      "updatedAt": "2025-06-18T10:11:22.686Z"
+      "updatedAt": "2025-06-18T10:34:01.155Z"
     }
   ],
   "custom_requests": [

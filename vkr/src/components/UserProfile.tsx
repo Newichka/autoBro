@@ -33,6 +33,7 @@ interface Order {
   };
   status: 'new' | 'processing' | 'in_transit' | 'completed' | 'cancelled';
   createdAt: string;
+  deliveryPrice?: number;
 }
 
 // Define allowed statuses type
@@ -390,6 +391,10 @@ const UserProfile: React.FC = () => {
                               <div className="col-md-7">
                                 <p className="mb-2"><strong>Год выпуска:</strong> {order.carInfo.year}</p>
                                 <p className="mb-2"><strong>Цена:</strong> {order.carInfo.price.toLocaleString()} ₽</p>
+                                {order.deliveryPrice !== undefined && order.deliveryPrice !== null && order.deliveryPrice > 0 && (
+                                  <p className="mb-2"><strong>Доставка:</strong> {order.deliveryPrice.toLocaleString()} ₽</p>
+                                )}
+                                <p className="mb-2 text-success"><strong>Итого:</strong> {(order.carInfo.price + (order.deliveryPrice || 0)).toLocaleString()} ₽</p>
                                 <p className="mb-2"><strong>Дата заказа:</strong> {new Date(order.createdAt).toLocaleDateString()}</p>
                                 <p className="mb-0"><strong>Статус:</strong> {getStatusText(order.status)}</p>
                               </div>
