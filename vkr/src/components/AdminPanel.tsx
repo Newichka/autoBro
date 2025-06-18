@@ -44,6 +44,7 @@ interface CustomRequest {
   condition: string;
   status: 'new' | 'viewed' | 'closed';
   createdAt: string;
+  suggestedCarUrl?: string;
 }
 type CustomRequestStatus = 'new' | 'viewed' | 'closed';
 
@@ -218,6 +219,33 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  // Функция для нормализации url фото
+  const normalizePhotoUrl = (url?: string) => {
+    if (!url) return '/car.png';
+    if (url.startsWith('http://localhost:5000/uploads/')) {
+      return url.replace('http://localhost:5000', 'http://localhost:8080');
+    }
+    if (url.startsWith('/uploads/')) {
+      return 'http://localhost:8080' + url;
+    }
+    return url;
+  };
+
+  // Обработчик для изменения и сохранения ссылки
+  const handleSuggestedCarUrlChange = (requestId: string, value: string) => {
+    setCustomRequests(prev => prev.map(req =>
+      req.id === requestId ? { ...req, suggestedCarUrl: value } : req
+    ));
+  };
+  const saveSuggestedCarUrl = async (requestId: string, value: string) => {
+    try {
+      await axios.put(`http://localhost:3001/custom-requests/${requestId}`, { suggestedCarUrl: value });
+      fetchCustomRequests();
+    } catch (error) {
+      console.error('Ошибка при сохранении ссылки на авто:', error);
+    }
+  };
+
   return (
     <div className="container mt-4">
       <div className="row">
@@ -276,110 +304,112 @@ const AdminPanel: React.FC = () => {
                   ) : orders.length === 0 ? (
                     <div className="alert alert-info">Заказы отсутствуют</div>
                   ) : (
-                    <div className="table-responsive" style={{ minHeight: '80vh', overflowX: 'auto' }}>
+                    <div className="table-responsive" style={{ minHeight: '80vh' }}>
                       <table className="table table-hover align-middle">
                         <thead>
-                          <tr>
-                            <th>ID Заказа</th>
-                            <th>Клиент</th>
-                            <th>Телефон</th>
-                            <th>Страна</th>
-                            <th>Город</th>
-                            <th>Адрес</th>
-                            <th>Автомобиль</th>
-                            <th>Цена</th>
-                            <th>Доставка</th>
-                            <th>Итого</th>
-                            <th>Статус</th>
-                            <th>Действия</th>
-                          </tr>
+                          {/* Заголовки колонок убраны для компактности и современного вида */}
                         </thead>
                         <tbody>
-                          {orders.map(order => (
+                          {orders.map((order, idx) => (
                             <tr key={order.id}>
-                              <td title={order.id}>{order.id.substring(0, 8)}...</td>
-                              <td>{order.fullName}</td>
-                              <td>{order.phone}</td>
-                              <td>{order.country}</td>
-                              <td>{order.city}</td>
-                              <td style={{ maxWidth: 180, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{order.address}</td>
-                              <td>
-                                <div className="d-flex align-items-center">
-                                  {order.carInfo.mainPhotoUrl && (
-                                    <div className="me-2 flex-shrink-0" style={{ width: '50px', height: '40px' }}>
-                                      <img
-                                        src={order.carInfo.mainPhotoUrl}
-                                        alt={`${order.carInfo.make} ${order.carInfo.model}`}
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '2px' }}
-                                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/50x40?text=Нет+фото'; }}
-                                      />
+                              <td colSpan={8} style={{
+                                background: idx % 2 === 0 ? '#e3f1fb' : '#ededed',
+                                borderRadius: '12px',
+                                boxShadow: '0 2px 12px rgba(53,99,233,0.13)',
+                                padding: 0,
+                                border: 'none',
+                                verticalAlign: 'top',
+                                marginBottom: 0
+                              }}>
+                                <div style={{ padding: '1.2rem 1.5rem 1.2rem 1.5rem', width: '100%' }}>
+                                  <div className="d-flex flex-wrap align-items-center" style={{ gap: 0 }}>
+                                    <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap' }}>
+                                      <div style={{ minWidth: 120, borderRight: '1px solid #e0e0e0', paddingRight: 12, marginRight: 12, wordBreak: 'break-all' }}><b>ID:</b> {order.id}</div>
+                                      <div style={{ minWidth: 120, borderRight: '1px solid #e0e0e0', paddingRight: 12, marginRight: 12 }}><b>Клиент:</b> {order.fullName}</div>
+                                      <div style={{ minWidth: 120, borderRight: '1px solid #e0e0e0', paddingRight: 12, marginRight: 12 }}><b>Телефон:</b> {order.phone}</div>
+                                      <div style={{ minWidth: 100, borderRight: '1px solid #e0e0e0', paddingRight: 12, marginRight: 12 }}><b>Страна:</b> {order.country}</div>
+                                      <div style={{ minWidth: 100, borderRight: '1px solid #e0e0e0', paddingRight: 12, marginRight: 12 }}><b>Город:</b> {order.city}</div>
+                                      <div style={{ minWidth: 160, wordBreak: 'break-word' }}><b>Адрес:</b> {order.address}</div>
                                     </div>
-                                  )}
-                                  <span className="small">{order.carInfo.make} {order.carInfo.model} ({order.carInfo.year})</span>
-                                </div>
-                              </td>
-                              <td>{order.carInfo.price.toLocaleString()} ₽</td>
-                              <td>
-                                {order.status === 'processing' ? (
-                                  <input
-                                    type="number"
-                                    className="form-control form-control-sm"
-                                    style={{ width: 100 }}
-                                    value={order.deliveryPrice ?? ''}
-                                    min={0}
-                                    placeholder="₽"
-                                    onChange={e => handleDeliveryPriceChange(order.id, e.target.value)}
-                                    onBlur={e => saveDeliveryPrice(order.id, e.target.value)}
-                                    onKeyDown={e => handleDeliveryPriceKeyDown(order.id, (e.target as HTMLInputElement).value, e)}
-                                  />
-                                ) : (
-                                  order.deliveryPrice ? `${order.deliveryPrice.toLocaleString()} ₽` : '-'
-                                )}
-                              </td>
-                              <td>{(order.carInfo.price + (order.deliveryPrice || 0)).toLocaleString()} ₽</td>
-                              <td>
-                                <span className={`badge ${getOrderStatusBadgeClass(order.status)}`}>
-                                  {getOrderStatusText(order.status)}
-                                </span>
-                              </td>
-                              <td>
-                                <div className="dropdown">
-                                  <button className="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Изменить статус
-                                  </button>
-                                  <ul className="dropdown-menu dropdown-menu-end">
-                                    {order.status !== 'processing' && order.status !== 'completed' && order.status !== 'cancelled' && (
-                                      <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'processing')}><i className="bi bi-arrow-repeat me-2"></i>В обработку</button></li>
-                                    )}
-                                    {order.status !== 'awaiting_prepayment' && (
-                                      <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'awaiting_prepayment')}><i className="bi bi-hourglass-split me-2"></i>Ожидает предоплаты</button></li>
-                                    )}
-                                    {order.status !== 'prepayment_received' && (
-                                      <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'prepayment_received')}><i className="bi bi-cash-coin me-2"></i>Внесена предоплата</button></li>
-                                    )}
-                                    {order.status !== 'processing_docs' && (
-                                      <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'processing_docs')}><i className="bi bi-file-earmark-text me-2"></i>На оформлении</button></li>
-                                    )}
-                                    {order.status === 'processing' && (
-                                      <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'in_transit')}><i className="bi bi-truck me-2"></i>В пути</button></li>
-                                    )}
-                                    {(order.status === 'processing' || order.status === 'in_transit') && (
-                                      <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'completed')}><i className="bi bi-check-circle me-2"></i>Выполнен</button></li>
-                                    )}
-                                    {order.status !== 'cancelled' && order.status !== 'completed' && (
-                                      <li><button className="dropdown-item text-danger" onClick={() => handleOrderStatusChange(order.id, 'cancelled')}><i className="bi bi-x-circle me-2"></i>Отменить</button></li>
-                                    )}
-                                    {(order.status === 'completed' || order.status === 'cancelled') && (
-                                      <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'new')}><i className="bi bi-arrow-counterclockwise me-2"></i>Вернуть в новые</button></li>
-                                    )}
-                                    <li><hr className="dropdown-divider"/></li>
-                                    <li>
-                                      <button className="dropdown-item text-danger" onClick={() => handleOrderDelete(order.id)}>
-                                        <i className="bi bi-trash me-2"></i>Удалить заказ
+                                    <span className={`badge ${getOrderStatusBadgeClass(order.status)}`}>{getOrderStatusText(order.status)}</span>
+                                    <div className="dropdown ms-3">
+                                      <button className="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Изменить статус
                                       </button>
-                                    </li>
-                                  </ul>
+                                      <ul className="dropdown-menu dropdown-menu-end">
+                                        {order.status !== 'processing' && order.status !== 'completed' && order.status !== 'cancelled' && (
+                                          <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'processing')}><i className="bi bi-arrow-repeat me-2"></i>В обработку</button></li>
+                                        )}
+                                        {order.status !== 'awaiting_prepayment' && (
+                                          <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'awaiting_prepayment')}><i className="bi bi-hourglass-split me-2"></i>Ожидает предоплаты</button></li>
+                                        )}
+                                        {order.status !== 'prepayment_received' && (
+                                          <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'prepayment_received')}><i className="bi bi-cash-coin me-2"></i>Внесена предоплата</button></li>
+                                        )}
+                                        {order.status !== 'processing_docs' && (
+                                          <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'processing_docs')}><i className="bi bi-file-earmark-text me-2"></i>На оформлении</button></li>
+                                        )}
+                                        {order.status === 'processing' && (
+                                          <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'in_transit')}><i className="bi bi-truck me-2"></i>В пути</button></li>
+                                        )}
+                                        {(order.status === 'processing' || order.status === 'in_transit') && (
+                                          <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'completed')}><i className="bi bi-check-circle me-2"></i>Выполнен</button></li>
+                                        )}
+                                        {order.status !== 'cancelled' && order.status !== 'completed' && (
+                                          <li><button className="dropdown-item text-danger" onClick={() => handleOrderStatusChange(order.id, 'cancelled')}><i className="bi bi-x-circle me-2"></i>Отменить</button></li>
+                                        )}
+                                        {(order.status === 'completed' || order.status === 'cancelled') && (
+                                          <li><button className="dropdown-item" onClick={() => handleOrderStatusChange(order.id, 'new')}><i className="bi bi-arrow-counterclockwise me-2"></i>Вернуть в новые</button></li>
+                                        )}
+                                        <li><hr className="dropdown-divider"/></li>
+                                        <li>
+                                          <button className="dropdown-item text-danger" onClick={() => handleOrderDelete(order.id)}>
+                                            <i className="bi bi-trash me-2"></i>Удалить заказ
+                                          </button>
+                                        </li>
+                                      </ul>
+                                    </div>
+                                  </div>
+                                  <div className="d-flex flex-wrap align-items-center gap-3 pt-2">
+                                    {order.carInfo.mainPhotoUrl && (
+                                      <div className="me-2 flex-shrink-0" style={{ width: '70px', height: '50px' }}>
+                                        <img
+                                          src={order.carInfo.mainPhotoUrl ? normalizePhotoUrl(order.carInfo.mainPhotoUrl) : '/car.png'}
+                                          alt={`${order.carInfo.make} ${order.carInfo.model}`}
+                                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '2px' }}
+                                          onError={(e) => { (e.target as HTMLImageElement).src = '/car.png'; }}
+                                        />
+                                      </div>
+                                    )}
+                                    <div className="small">
+                                      <b>Авто:</b> {order.carInfo.make} {order.carInfo.model} ({order.carInfo.year})<br/>
+                                      <b>Цена:</b> {order.carInfo.price.toLocaleString()} ₽
+                                      {order.deliveryPrice !== undefined && order.deliveryPrice !== null && order.deliveryPrice > 0 && (
+                                        <><b> + Доставка:</b> {order.deliveryPrice.toLocaleString()} ₽</>
+                                      )}
+                                      <b> = Итого:</b> {(order.carInfo.price + (order.deliveryPrice || 0)).toLocaleString()} ₽
+                                    </div>
+                                    {order.status === 'processing' && (
+                                      <div className="ms-3">
+                                        <label className="form-label mb-0 me-2">Доставка:</label>
+                                        <input
+                                          type="number"
+                                          className="form-control form-control-sm d-inline-block"
+                                          style={{ width: 100, display: 'inline-block' }}
+                                          value={order.deliveryPrice ?? ''}
+                                          min={0}
+                                          placeholder="₽"
+                                          onChange={e => handleDeliveryPriceChange(order.id, e.target.value)}
+                                          onBlur={e => saveDeliveryPrice(order.id, e.target.value)}
+                                          onKeyDown={e => handleDeliveryPriceKeyDown(order.id, (e.target as HTMLInputElement).value, e)}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
+                                {idx !== orders.length - 1 && (
+                                  <div style={{ height: 24 }} />
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -414,6 +444,7 @@ const AdminPanel: React.FC = () => {
                             <th>Состояние</th>
                             <th>Статус</th>
                             <th>Дата</th>
+                            <th>Предложенное авто</th>
                             <th>Действия</th>
                           </tr>
                         </thead>
@@ -435,6 +466,23 @@ const AdminPanel: React.FC = () => {
                                 </span>
                               </td>
                               <td>{new Date(req.createdAt).toLocaleDateString()}</td>
+                              <td style={{ maxWidth: 220, wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>
+                                <input
+                                  type="url"
+                                  className="form-control form-control-sm"
+                                  style={{ minWidth: 120, maxWidth: 220, fontSize: 13 }}
+                                  value={req.suggestedCarUrl || ''}
+                                  placeholder="https://..."
+                                  onChange={e => handleSuggestedCarUrlChange(req.id, e.target.value)}
+                                  onBlur={e => saveSuggestedCarUrl(req.id, e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') { saveSuggestedCarUrl(req.id, e.currentTarget.value); e.currentTarget.blur(); } }}
+                                />
+                                {req.suggestedCarUrl && (
+                                  <a href={req.suggestedCarUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#1a5fb4', wordBreak: 'break-all', display: 'block', marginTop: 2 }}>
+                                    {req.suggestedCarUrl}
+                                  </a>
+                                )}
+                              </td>
                               <td>
                                 <div className="d-flex flex-column flex-sm-row gap-1">
                                   <div className="dropdown">

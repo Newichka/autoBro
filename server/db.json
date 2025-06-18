@@ -43,31 +43,9 @@
         "mainPhotoUrl": "https://placehold.co/600x400/eeeeee/333333?text=VW+Tiguan+2020"
       },
       "createdAt": "2025-06-10T16:26:07.567Z",
-      "updatedAt": "2025-06-18T10:44:22.424Z",
+      "updatedAt": "2025-06-18T11:03:53.712Z",
       "status": "processing",
       "deliveryPrice": 200000
-    },
-    {
-      "id": "1750241482686",
-      "uid": "xBk9gyHMiw348cWPWFqJ",
-      "userEmail": "user2@2.com",
-      "fullName": "Шолохов Артём Иванович",
-      "phone": "+7(952)726-96-26",
-      "country": "Россия",
-      "city": "Екатеринбург",
-      "address": "Ломоносова 52",
-      "carId": 91,
-      "carInfo": {
-        "id": 91,
-        "make": "Lada",
-        "model": "Vesta",
-        "year": 2020,
-        "price": 1000000,
-        "mainPhotoUrl": "/uploads/cars/91/4bf5a038-b8a6-4344-a7bb-08edc45dd1a1.jpg"
-      },
-      "status": "processing",
-      "createdAt": "2025-06-18T10:11:22.686Z",
-      "updatedAt": "2025-06-18T10:34:01.155Z"
     }
   ],
   "custom_requests": [
@@ -87,7 +65,8 @@
       "condition": "Новая",
       "status": "new",
       "createdAt": "2025-06-13T11:02:57.897Z",
-      "updatedAt": "2025-06-13T11:02:57.897Z"
+      "updatedAt": "2025-06-18T11:30:36.697Z",
+      "suggestedCarUrl": "http://localhost:5000/admin"
     }
   ]
 }

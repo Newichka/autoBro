@@ -355,18 +355,47 @@ public class CarService {
     public void deleteCar(Long id) {
         Car car = carRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Car", id));
-        // Удаляем фотографии с диска
-        if (car.getPhotos() != null) {
-            car.getPhotos().forEach(photo -> {
-                try {
-                    Files.deleteIfExists(Paths.get(photo.getUrl()));
-                } catch (IOException e) {
-                    // Логируем ошибку, но продолжаем удаление
-                    e.printStackTrace();
+
+        try {
+            // Удаляем фотографии с диска
+            if (car.getPhotos() != null) {
+                for (Photo photo : car.getPhotos()) {
+                    try {
+                        // Получаем полный путь к файлу
+                        Path photoPath = Paths.get(uploadPath, photo.getUrl().replace("/uploads/", ""));
+                        if (Files.exists(photoPath)) {
+                            Files.delete(photoPath);
+                        }
+                    } catch (IOException e) {
+                        // Логируем ошибку, но продолжаем удаление
+                        System.err.println("Ошибка при удалении файла фото: " + e.getMessage());
+                    }
                 }
-            });
+            }
+
+            // Удаляем директорию с фотографиями автомобиля
+            Path carPhotosDir = Paths.get(uploadPath, "cars", id.toString());
+            if (Files.exists(carPhotosDir)) {
+                try {
+                    Files.walk(carPhotosDir)
+                        .sorted((p1, p2) -> -p1.compareTo(p2)) // Сортируем в обратном порядке для удаления файлов перед директориями
+                        .forEach(path -> {
+                            try {
+                                Files.delete(path);
+                            } catch (IOException e) {
+                                System.err.println("Ошибка при удалении файла/директории: " + e.getMessage());
+                            }
+                        });
+                } catch (IOException e) {
+                    System.err.println("Ошибка при удалении директории с фотографиями: " + e.getMessage());
+                }
+            }
+
+            // Удаляем записи из базы данных
+            carRepository.delete(car);
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при удалении автомобиля: " + e.getMessage(), e);
         }
-        carRepository.delete(car);
     }
 
     @Transactional

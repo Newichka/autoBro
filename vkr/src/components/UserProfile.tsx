@@ -53,6 +53,7 @@ interface CustomRequest {
   condition?: string;
   status: string;
   createdAt: string;
+  suggestedCarUrl?: string;
 }
 
 // Функция для нормализации url фото
@@ -452,6 +453,7 @@ const UserProfile: React.FC = () => {
                         <th>Состояние</th>
                         <th>Статус</th>
                         <th>Дата</th>
+                        <th>Предложенное авто</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -466,6 +468,15 @@ const UserProfile: React.FC = () => {
                           <td>{req.condition || '-'}</td>
                           <td><span className="badge bg-secondary">{req.status || 'В обработке'}</span></td>
                           <td>{new Date(req.createdAt).toLocaleDateString()}</td>
+                          <td style={{ maxWidth: 220, wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>
+                            {req.suggestedCarUrl ? (
+                              <a href={req.suggestedCarUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#1a5fb4', wordBreak: 'break-all', display: 'block' }}>
+                                {req.suggestedCarUrl}
+                              </a>
+                            ) : (
+                              <span className="text-muted" style={{ fontSize: 13 }}>—</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

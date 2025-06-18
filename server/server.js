@@ -249,24 +249,23 @@ app.post("/custom-requests", (req, res) => {
 
 // Обновить статус пользовательской заявки (для админа)
 app.put("/custom-requests/:id", (req, res) => {
-  const { status } = req.body;
+  const { status, suggestedCarUrl } = req.body;
   const requestId = req.params.id;
   const request = db.get("custom_requests").find({ id: requestId }).value();
-  
   if (!request) {
     return res.status(404).json({ message: "Заявка не найдена" });
   }
-  
   const allowedStatuses = ["new", "viewed", "closed"];
   if (status && !allowedStatuses.includes(status)) {
     return res.status(400).json({ message: "Недопустимый статус заявки" });
   }
-
+  const updateData = { updatedAt: new Date().toISOString() };
+  if (status) updateData.status = status;
+  if (suggestedCarUrl !== undefined) updateData.suggestedCarUrl = suggestedCarUrl;
   db.get("custom_requests")
     .find({ id: requestId })
-    .assign({ status, updatedAt: new Date().toISOString() })
+    .assign(updateData)
     .write();
-  
   res.json({ message: "Статус заявки обновлен", request: db.get("custom_requests").find({ id: requestId }).value() });
 });
 
