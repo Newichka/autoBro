@@ -27,7 +27,7 @@ interface Car {
   condition: string;
   location: string;
   mainPhotoUrl?: string;
-  allPhotoUrls?: string[];
+  photos?: string[];
   safetyFeatures?: string[];
   equipment?: string[];
   technicalSpec: TechnicalSpec;
@@ -124,21 +124,24 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
   const handleImageMouseEnter = (car: Car) => {
     setHoveredCarId(car.id);
     setIsHovering(true);
+    setHoveredPhotoIndex(0); // Сбрасываем индекс фото при наведении
   };
   
   const handleImageMouseLeave = () => {
     setIsHovering(false);
+    setHoveredCarId(null);
+    setHoveredPhotoIndex(0);
   };
   
   const handleImageMouseMove = (e: React.MouseEvent, car: Car) => {
-    if (!car.allPhotoUrls || car.allPhotoUrls.length <= 1) return;
+    if (!car.photos || car.photos.length <= 1) return;
     
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     const x = e.clientX - rect.left;
     const width = rect.width;
     
     // Определяем индекс фото на основе положения курсора
-    const photoCount = car.allPhotoUrls.length;
+    const photoCount = car.photos.length;
     const photoIndex = Math.min(
       Math.floor((x / width) * photoCount),
       photoCount - 1
@@ -173,16 +176,16 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
   };
   
   const handleChangeFullscreenPhoto = (newIndex: number) => {
-    // Проверяем fullscreenCar и fullscreenCar.allPhotoUrls перед использованием
-    if (!fullscreenCar || !fullscreenCar.allPhotoUrls) return;
+    // Проверяем fullscreenCar и fullscreenCar.photos перед использованием
+    if (!fullscreenCar || !fullscreenCar.photos) return;
 
     setIsPhotoChanging(true);
     setTimeout(() => {
       // Повторная проверка внутри setTimeout для дополнительной безопасности
-      if (!fullscreenCar || !fullscreenCar.allPhotoUrls) return;
+      if (!fullscreenCar || !fullscreenCar.photos) return;
       
       // Убедимся, что newIndex в допустимых границах
-      const validIndex = Math.max(0, Math.min(newIndex, fullscreenCar.allPhotoUrls.length - 1));
+      const validIndex = Math.max(0, Math.min(newIndex, fullscreenCar.photos.length - 1));
       setFullscreenPhotoIndex(validIndex);
       setIsPhotoChanging(false);
     }, 200);
@@ -191,20 +194,20 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
   // Обработчик нажатия клавиш для навигации в полноэкранном режиме
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Убедимся, что fullscreenCar и allPhotoUrls существуют перед доступом к length
-      if (!fullscreenMode || !fullscreenCar || !fullscreenCar.allPhotoUrls || fullscreenCar.allPhotoUrls.length <= 1) return;
+      // Убедимся, что fullscreenCar и photos существуют перед доступом к length
+      if (!fullscreenMode || !fullscreenCar || !fullscreenCar.photos || fullscreenCar.photos.length <= 1) return;
       
       if (e.key === 'Escape') {
         handleCloseFullscreen();
       } else if (e.key === 'ArrowLeft') {
         // Доступ к length безопасен после проверки выше
         const newIndex = fullscreenPhotoIndex === 0 
-          ? fullscreenCar.allPhotoUrls.length - 1 
+          ? fullscreenCar.photos.length - 1 
           : fullscreenPhotoIndex - 1;
         handleChangeFullscreenPhoto(newIndex);
       } else if (e.key === 'ArrowRight') {
         // Доступ к length безопасен после проверки выше
-        const newIndex = fullscreenPhotoIndex === fullscreenCar.allPhotoUrls.length - 1 
+        const newIndex = fullscreenPhotoIndex === fullscreenCar.photos.length - 1 
           ? 0 
           : fullscreenPhotoIndex + 1;
         handleChangeFullscreenPhoto(newIndex);
@@ -262,9 +265,9 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                       >
                         <img 
                           src={
-                            isHovering && hoveredCarId === car.id && car.allPhotoUrls && car.allPhotoUrls.length > 0
-                              ? car.allPhotoUrls[hoveredPhotoIndex]
-                              : (car.mainPhotoUrl || 'https://via.placeholder.com/300x200?text=Нет+фото')
+                            isHovering && hoveredCarId === car.id && car.photos && car.photos.length > 0
+                              ? car.photos[hoveredPhotoIndex].replace(/^\//, '')
+                              : (car.mainPhotoUrl ? car.mainPhotoUrl.replace(/^\//, '') : '/car.png')
                           } 
                           className="img-fluid h-100 rounded-start" 
                           alt={`${car.make} ${car.model}`} 
@@ -276,6 +279,10 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                             transition: 'all 0.3s ease',
                             cursor: 'pointer'
                           }}
+                          onError={(e) => {
+                            console.error('Error loading image:', e.currentTarget.src);
+                            e.currentTarget.src = '/car.png';
+                          }}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -283,7 +290,7 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                           }}
                         />
                         {/* Индикатор количества фото */}
-                        {car.allPhotoUrls && car.allPhotoUrls.length > 1 && (
+                        {car.photos && car.photos.length > 1 && (
                           <div className="position-absolute top-0 end-0 m-2">
                             <button 
                               className="btn btn-dark btn-sm rounded-pill opacity-75"
@@ -293,7 +300,7 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                               }}
                             >
                               <i className="bi bi-images me-1"></i>
-                              {car.allPhotoUrls.length}
+                              {car.photos.length}
                             </button>
                           </div>
                         )}
@@ -363,9 +370,9 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                     >
                       <img 
                         src={
-                          isHovering && hoveredCarId === car.id && car.allPhotoUrls && car.allPhotoUrls.length > 0
-                            ? car.allPhotoUrls[hoveredPhotoIndex]
-                            : (car.mainPhotoUrl || 'https://via.placeholder.com/300x200?text=Нет+фото')
+                          isHovering && hoveredCarId === car.id && car.photos && car.photos.length > 0
+                            ? car.photos[hoveredPhotoIndex].replace(/^\//, '')
+                            : (car.mainPhotoUrl ? car.mainPhotoUrl.replace(/^\//, '') : '/car.png')
                         } 
                         className="card-img-top" 
                         alt={`${car.make} ${car.model}`} 
@@ -373,6 +380,10 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                           height: '200px', 
                           objectFit: 'cover',
                           transition: 'all 0.3s ease'
+                        }}
+                        onError={(e) => {
+                          console.error('Error loading image:', e.currentTarget.src);
+                          e.currentTarget.src = '/car.png';
                         }}
                         onClick={(e) => {
                           e.preventDefault();
@@ -382,7 +393,7 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                       />
                       
                       {/* Индикатор количества фото */}
-                      {car.allPhotoUrls && car.allPhotoUrls.length > 1 && (
+                      {car.photos && car.photos.length > 1 && (
                         <div className="position-absolute top-0 end-0 m-2">
                           <button 
                             className="btn btn-dark btn-sm rounded-pill opacity-75"
@@ -392,7 +403,7 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                             }}
                           >
                             <i className="bi bi-images me-1"></i>
-                            {car.allPhotoUrls.length}
+                            {car.photos.length}
                           </button>
                         </div>
                       )}
@@ -465,10 +476,10 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
           onClick={handleFullscreenBackgroundClick}
         >
           <div className="position-relative" style={{ maxWidth: '90%', maxHeight: '90%' }}>
-            {/* Проверяем наличие allPhotoUrls перед рендерингом img */}
-            {fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 0 ? (
+            {/* Проверяем наличие photos перед рендерингом img */}
+            {fullscreenCar.photos && fullscreenCar.photos.length > 0 ? (
               <img 
-                src={fullscreenCar.allPhotoUrls[fullscreenPhotoIndex]} 
+                src={fullscreenCar.photos[fullscreenPhotoIndex]} 
                 alt={`${fullscreenCar.make} ${fullscreenCar.model}`}
                 className="img-fluid"
                 style={{
@@ -481,8 +492,8 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
               <div className="text-white">Нет доступных фото</div>
             )}
             
-            {/* Кнопки навигации: Добавляем проверку fullscreenCar.allPhotoUrls перед доступом к length */}
-            {fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 1 && (
+            {/* Кнопки навигации: Добавляем проверку photos перед доступом к length */}
+            {fullscreenCar.photos && fullscreenCar.photos.length > 1 && (
               <>
                 <button 
                   className="btn btn-dark position-absolute top-50 start-0 translate-middle-y rounded-circle"
@@ -490,9 +501,9 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                   onClick={(e) => {
                     e.stopPropagation();
                     // Добавляем проверку внутри обработчика
-                    if (!fullscreenCar || !fullscreenCar.allPhotoUrls) return;
+                    if (!fullscreenCar || !fullscreenCar.photos) return;
                     const newIndex = fullscreenPhotoIndex === 0 
-                      ? fullscreenCar.allPhotoUrls.length - 1 
+                      ? fullscreenCar.photos.length - 1 
                       : fullscreenPhotoIndex - 1;
                     handleChangeFullscreenPhoto(newIndex);
                   }}
@@ -505,8 +516,8 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
                   onClick={(e) => {
                     e.stopPropagation();
                     // Добавляем проверку внутри обработчика
-                    if (!fullscreenCar || !fullscreenCar.allPhotoUrls) return;
-                    const newIndex = fullscreenPhotoIndex === fullscreenCar.allPhotoUrls.length - 1 
+                    if (!fullscreenCar || !fullscreenCar.photos) return;
+                    const newIndex = fullscreenPhotoIndex === fullscreenCar.photos.length - 1 
                       ? 0 
                       : fullscreenPhotoIndex + 1;
                     handleChangeFullscreenPhoto(newIndex);
@@ -526,11 +537,11 @@ const CanDeliverTab: React.FC<CanDeliverTabProps> = ({ filters, viewMode, onShow
               <i className="bi bi-x-lg"></i>
             </button>
             
-            {/* Индикатор фотографий: Добавляем проверку fullscreenCar.allPhotoUrls перед доступом к length */}
-            {fullscreenCar.allPhotoUrls && fullscreenCar.allPhotoUrls.length > 1 && (
+            {/* Индикатор фотографий: Добавляем проверку photos перед доступом к length */}
+            {fullscreenCar.photos && fullscreenCar.photos.length > 1 && (
               <div className="position-absolute bottom-0 start-50 translate-middle-x mb-4">
                 <div className="d-flex gap-2">
-                  {fullscreenCar.allPhotoUrls.map((_, index) => (
+                  {fullscreenCar.photos.map((_, index) => (
                     <button 
                       key={index}
                       className={`btn btn-sm rounded-circle ${index === fullscreenPhotoIndex ? 'btn-light' : 'btn-dark'}`}

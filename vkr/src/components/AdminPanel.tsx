@@ -145,7 +145,7 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleCarAdded = () => setIsAddCarModalOpen(false);
-  const handleCarDeleted = () => setIsCarListModalOpen(false);
+  const handleCarDeleted = () => {};
 
   // Status helpers for Orders
   const getOrderStatusBadgeClass = (status: OrderStatus) => {

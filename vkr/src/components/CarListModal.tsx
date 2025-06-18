@@ -21,23 +21,30 @@ const CarListModal: React.FC<CarListModalProps> = ({ isOpen, onClose, onCarDelet
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [pagination, setPagination] = useState({ page: 0, totalPages: 0, totalElements: 0 });
+  const [pageSize] = useState(50); // Увеличиваем размер страницы
 
   useEffect(() => {
     if (isOpen) {
       fetchCars();
     }
-  }, [isOpen]);
+  }, [isOpen, pagination.page]);
 
   const fetchCars = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/cars');
+      const response = await fetch(`/api/cars?page=${pagination.page}&size=${pageSize}`);
       if (!response.ok) {
         throw new Error('Не удалось загрузить список автомобилей');
       }
       const data = await response.json();
       setCars(data.data.content || data.data);
+      setPagination({
+        page: data.data.number || 0,
+        totalPages: data.data.totalPages || 0,
+        totalElements: data.data.totalElements || 0
+      });
     } catch (err: any) {
       setError(err.message || 'Произошла ошибка при загрузке автомобилей');
       console.error('Error fetching cars:', err);
@@ -46,26 +53,15 @@ const CarListModal: React.FC<CarListModalProps> = ({ isOpen, onClose, onCarDelet
     }
   };
 
-  const handleDeleteClick = (carId: number) => {
-    setDeleteConfirmId(carId);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (deleteConfirmId === null) return;
-    
+  const handleDeleteClick = async (carId: number) => {
     try {
-      const response = await fetch(`/api/cars/${deleteConfirmId}`, {
+      const response = await fetch(`/api/cars/${carId}`, {
         method: 'DELETE',
       });
-      
       if (!response.ok) {
         throw new Error('Не удалось удалить автомобиль');
       }
-      
-      // Удаляем автомобиль из локального состояния
-      setCars(cars.filter(car => car.id !== deleteConfirmId));
-      setDeleteConfirmId(null);
-      onCarDeleted();
+      setCars(cars.filter(car => car.id !== carId));
     } catch (err: any) {
       setError(err.message || 'Произошла ошибка при удалении автомобиля');
       console.error('Error deleting car:', err);
@@ -74,6 +70,10 @@ const CarListModal: React.FC<CarListModalProps> = ({ isOpen, onClose, onCarDelet
 
   const handleCancelDelete = () => {
     setDeleteConfirmId(null);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
   };
 
   if (!isOpen) return null;
@@ -141,18 +141,27 @@ const CarListModal: React.FC<CarListModalProps> = ({ isOpen, onClose, onCarDelet
           </>
         )}
         
-        {/* Модальное окно подтверждения удаления */}
-        {deleteConfirmId !== null && (
-          <div className="modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1060 }}>
-            <div className="modal-content bg-white p-4 rounded shadow-lg" style={{ width: '100%', maxWidth: '400px' }}>
-              <h5 className="mb-3">Подтверждение удаления</h5>
-              <p>Вы действительно хотите удалить этот автомобиль? Это действие нельзя отменить.</p>
-              <div className="d-flex justify-content-end mt-4">
-                <button type="button" className="btn btn-secondary me-2" onClick={handleCancelDelete}>Отмена</button>
-                <button type="button" className="btn btn-danger" onClick={handleConfirmDelete}>Удалить</button>
-              </div>
-            </div>
-          </div>
+        {/* Пагинация */}
+        {!loading && !error && pagination.totalPages > 1 && (
+          <nav aria-label="Page navigation" className="mt-4 d-flex justify-content-center">
+            <ul className="pagination pagination-sm">
+              <li className={`page-item ${pagination.page === 0 ? 'disabled' : ''}`}>
+                <button className="page-link" onClick={() => handlePageChange(pagination.page - 1)} aria-label="Previous">
+                  <span aria-hidden="true">&laquo;</span>
+                </button>
+              </li>
+              {[...Array(pagination.totalPages)].map((_, i) => (
+                <li key={i} className={`page-item ${pagination.page === i ? 'active' : ''}`}>
+                  <button className="page-link" onClick={() => handlePageChange(i)}>{i + 1}</button>
+                </li>
+              ))}
+              <li className={`page-item ${pagination.page === pagination.totalPages - 1 ? 'disabled' : ''}`}>
+                <button className="page-link" onClick={() => handlePageChange(pagination.page + 1)} aria-label="Next">
+                  <span aria-hidden="true">&raquo;</span>
+                </button>
+              </li>
+            </ul>
+          </nav>
         )}
       </div>
     </div>

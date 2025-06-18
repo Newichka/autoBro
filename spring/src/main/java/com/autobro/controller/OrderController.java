@@ -37,6 +37,7 @@ public class OrderController {
             
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
+            e.printStackTrace();
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("status", "error");
             errorResponse.put("message", "Ошибка при создании заказа: " + e.getMessage());
@@ -56,6 +57,7 @@ public class OrderController {
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            e.printStackTrace();
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("status", "error");
             errorResponse.put("message", "Ошибка при получении списка заказов: " + e.getMessage());
@@ -75,6 +77,7 @@ public class OrderController {
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            e.printStackTrace();
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("status", "error");
             errorResponse.put("message", "Ошибка при получении заказа: " + e.getMessage());
@@ -95,6 +98,7 @@ public class OrderController {
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            e.printStackTrace();
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("status", "error");
             errorResponse.put("message", "Ошибка при обновлении статуса заказа: " + e.getMessage());

@@ -36,4 +36,8 @@ build/
 /uploads/
 /logs/
 application-local.yml
-*.log 
+*.log
+
+# Uploaded files
+/uploads/
+uploads/ 

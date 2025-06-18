@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 interface TechnicalSpecDTO {
   fuelType: string;
@@ -13,25 +14,29 @@ interface TechnicalSpecDTO {
 
 // Updated to include hexCode for color information
 interface ColorData {
+  id: number;
   name: string;
   hexCode: string;
+}
+
+interface BodyType {
+  id: number;
+  name: string;
 }
 
 interface CarDTO {
   make: string;
   model: string;
   year: number;
-  bodyTypeName: string;
+  bodyType: { id: number };
   price: number;
   mileage?: number;
   engineInfo?: string;
   transmissionInfo?: string;
-  colorName: string; // This will be the name of the color
-  colorHexCode: string; // This will be the hex_code for the color
+  colorName: string;
+  colorHexCode: string;
   condition: string;
   location: string;
-  mainPhotoUrl?: string;
-  allPhotoUrls?: string[];
   safetyFeatures?: string[];
   equipment?: string[];
   technicalSpec: TechnicalSpecDTO;
@@ -47,16 +52,18 @@ const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
   const [year, setYear] = useState<number | ''>('');
-  const [bodyTypeName, setBodyTypeName] = useState('');
+  const [selectedBodyTypeId, setSelectedBodyTypeId] = useState<number | ''>('');
+  const [bodyTypes, setBodyTypes] = useState<BodyType[]>([]);
   const [price, setPrice] = useState<number | ''>('');
   const [mileage, setMileage] = useState<number | ''>('');
   const [engineInfoState, setEngineInfoState] = useState(''); // Renamed to avoid conflict with DTO field name
   const [transmissionInfoState, setTransmissionInfoState] = useState(''); // Renamed to avoid conflict
-  const [colorName, setColorName] = useState('');
-  const [colorHexCode, setColorHexCode] = useState(''); // New state for hex_code
+  const [selectedColorId, setSelectedColorId] = useState<number | ''>('');
+  const [colors, setColors] = useState<ColorData[]>([]);
   const [condition, setCondition] = useState('');
   const [location, setLocation] = useState('');
-  const [mainPhotoUrl, setMainPhotoUrl] = useState('');
+  const [mainPhoto, setMainPhoto] = useState<File | null>(null);
+  const [additionalPhotos, setAdditionalPhotos] = useState<File[]>([]);
   
   const [fuelType, setFuelType] = useState('');
   const [engineVolume, setEngineVolume] = useState<number | ''>('');
@@ -68,102 +75,103 @@ const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      axios.get('/dictionary/body-types')
+        .then(res => {
+          setBodyTypes(res.data.data || res.data.content || []);
+        })
+        .catch((err) => {
+          setBodyTypes([]);
+          setError('Не удалось загрузить типы кузова');
+        });
+      axios.get('/dictionary/colors')
+        .then(res => {
+          setColors(res.data.data || res.data.content || []);
+        })
+        .catch((err) => {
+          setColors([]);
+          setError('Не удалось загрузить цвета');
+        });
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const handleMainPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setMainPhoto(event.target.files[0]);
+    }
+  };
+
+  const handleAdditionalPhotosChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      setAdditionalPhotos(Array.from(event.target.files));
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
     setIsLoading(true);
 
-    // Updated validation to include colorHexCode
-    if (!make || !model || year === '' || !bodyTypeName || price === '' || !colorName || !colorHexCode || !condition || !location || !fuelType || !driveType || !transmissionTypeSpec) {
-      setError('Пожалуйста, заполните все обязательные поля, включая название цвета и его HEX-код.');
+    if (!make || !model || year === '' || selectedBodyTypeId === '' || selectedColorId === '' || price === '' || !condition || !location || !fuelType || !driveType || !transmissionTypeSpec) {
+      setError('Пожалуйста, заполните все обязательные поля.');
       setIsLoading(false);
       return;
     }
-    
-    // Validate hex_code format (basic example: #RRGGBB)
-    if (!/^#[0-9A-Fa-f]{6}$/.test(colorHexCode)) {
-        setError('HEX-код цвета должен быть в формате #RRGGBB (например, #FF0000).');
-        setIsLoading(false);
-        return;
-    }
 
-    const carData: CarDTO = {
+    const carData = {
       make,
       model,
       year: Number(year),
-      bodyTypeName,
+      bodyTypeId: Number(selectedBodyTypeId),
+      colorId: Number(selectedColorId),
       price: Number(price),
       mileage: mileage === '' ? undefined : Number(mileage),
-      engineInfo: engineInfoState, 
-      transmissionInfo: transmissionInfoState, 
-      colorName, // Name of the color
-      colorHexCode, // Hex code for the color
-      condition,
+      carCondition: condition,
       location,
-      mainPhotoUrl: mainPhotoUrl || undefined,
-      allPhotoUrls: mainPhotoUrl ? [mainPhotoUrl] : [],
-      safetyFeatures: [], 
-      equipment: [], 
       technicalSpec: {
         fuelType,
         engineVolume: engineVolume === '' ? undefined : Number(engineVolume),
         horsePower: horsePower === '' ? undefined : Number(horsePower),
         driveType,
-        transmissionType: transmissionTypeSpec, 
-        engineInfo: engineInfoState, // Sync or decide source
-        transmissionInfo: transmissionInfoState, // Sync or decide source
+        transmissionType: transmissionTypeSpec,
+        engineInfo: engineInfoState,
+        transmissionInfo: transmissionInfoState,
         gears: gears === '' ? undefined : Number(gears),
       },
     };
 
+    const formData = new FormData();
+    formData.append('car', JSON.stringify(carData));
+    
+    if (mainPhoto) {
+      formData.append('mainPhoto', mainPhoto);
+    }
+    
+    additionalPhotos.forEach((photo) => {
+      formData.append('additionalPhotos', photo);
+    });
+
     try {
-      // The backend endpoint /api/cars should be able to handle `colorName` and `colorHexCode`
-      // to find or create a Color entity.
-      const response = await fetch('/api/cars', {
-        method: 'POST',
+      const response = await axios.post('/cars', formData, {
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'multipart/form-data',
         },
-        body: JSON.stringify(carData),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        // Log the full error for better debugging if needed
-        console.error('Backend error:', errorData);
-        throw new Error(errorData.message || 'Не удалось добавить автомобиль. Проверьте консоль для деталей.');
+      if (response.status === 200) {
+        onCarAdded(response.data);
+        onClose();
       }
-
-      const newCarResponse = await response.json();
-      // Assuming the backend returns the created car DTO within a 'data' field
-      onCarAdded(newCarResponse.data);
-      
-      // Reset form fields
-      setMake('');
-      setModel('');
-      setYear('');
-      setBodyTypeName('');
-      setPrice('');
-      setMileage('');
-      setEngineInfoState('');
-      setTransmissionInfoState('');
-      setColorName('');
-      setColorHexCode('');
-      setCondition('');
-      setLocation('');
-      setMainPhotoUrl('');
-      setFuelType('');
-      setEngineVolume('');
-      setHorsePower('');
-      setDriveType('');
-      setTransmissionTypeSpec('');
-      setGears('');
-      
-      onClose(); // Close modal on success
-    } catch (err: any) {
-      setError(err.message || 'Произошла ошибка при добавлении автомобиля.');
+    } catch (error: any) {
+      if (error.response && error.response.data) {
+        setError('Ошибка: ' + (typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data)));
+      } else {
+        setError('Произошла ошибка при добавлении автомобиля');
+      }
+      console.error('Error adding car:', error);
     } finally {
       setIsLoading(false);
     }
@@ -192,8 +200,13 @@ const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }
               <input type="number" className="form-control" id="year" value={year} onChange={(e) => setYear(e.target.value === '' ? '' : parseInt(e.target.value))} required />
             </div>
             <div className="col-md-6">
-              <label htmlFor="bodyTypeName" className="form-label">Тип кузова</label>
-              <input type="text" className="form-control" id="bodyTypeName" value={bodyTypeName} onChange={(e) => setBodyTypeName(e.target.value)} required />
+              <label htmlFor="bodyType" className="form-label">Тип кузова</label>
+              <select className="form-select" id="bodyType" value={selectedBodyTypeId} onChange={e => setSelectedBodyTypeId(Number(e.target.value))} required>
+                <option value="">Выберите тип кузова</option>
+                {bodyTypes.map(bt => (
+                  <option key={bt.id} value={bt.id}>{bt.name}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="row mb-2">
@@ -209,12 +222,13 @@ const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }
           {/* Color Name and Hex Code */}
           <div className="row mb-2">
             <div className="col-md-6">
-              <label htmlFor="colorName" className="form-label">Название цвета</label>
-              <input type="text" className="form-control" id="colorName" value={colorName} onChange={(e) => setColorName(e.target.value)} required />
-            </div>
-            <div className="col-md-6">
-              <label htmlFor="colorHexCode" className="form-label">HEX-код цвета</label>
-              <input type="text" className="form-control" id="colorHexCode" value={colorHexCode} onChange={(e) => setColorHexCode(e.target.value)} placeholder="#RRGGBB" required />
+              <label htmlFor="color" className="form-label">Цвет</label>
+              <select className="form-select" id="color" value={selectedColorId} onChange={e => setSelectedColorId(Number(e.target.value))} required>
+                <option value="">Выберите цвет</option>
+                {colors.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.hexCode})</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="row mb-2">
@@ -227,11 +241,7 @@ const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }
               <input type="text" className="form-control" id="location" value={location} onChange={(e) => setLocation(e.target.value)} required />
             </div>
           </div>
-          <div className="mb-2">
-            <label htmlFor="mainPhotoUrl" className="form-label">URL главного фото</label>
-            <input type="text" className="form-control" id="mainPhotoUrl" value={mainPhotoUrl} onChange={(e) => setMainPhotoUrl(e.target.value)} />
-          </div>
-          
+
           {/* Technical Specifications */}
           <h6 className="mt-3 mb-2">Технические характеристики</h6>
           <div className="row mb-2">
@@ -275,6 +285,30 @@ const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }
                 <label htmlFor="transmissionInfoState" className="form-label">Доп. инфо о трансмиссии (CarDTO)</label>
                 <input type="text" className="form-control" id="transmissionInfoState" value={transmissionInfoState} onChange={(e) => setTransmissionInfoState(e.target.value)} />
             </div>
+          </div>
+
+          <div className="mb-3">
+            <label htmlFor="mainPhoto" className="form-label">Главное фото</label>
+            <input
+              type="file"
+              className="form-control"
+              id="mainPhoto"
+              accept="image/*"
+              onChange={handleMainPhotoChange}
+              required
+            />
+          </div>
+          
+          <div className="mb-3">
+            <label htmlFor="additionalPhotos" className="form-label">Дополнительные фото</label>
+            <input
+              type="file"
+              className="form-control"
+              id="additionalPhotos"
+              accept="image/*"
+              multiple
+              onChange={handleAdditionalPhotosChange}
+            />
           </div>
 
           <div className="d-flex justify-content-end">

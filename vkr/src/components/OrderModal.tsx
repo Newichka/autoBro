@@ -29,6 +29,17 @@ interface UserProfile {
   address: string; // New field
 }
 
+const normalizePhotoUrl = (url?: string) => {
+  if (!url) return '/car.png';
+  if (url.startsWith('http://localhost:5000/uploads/')) {
+    return url.replace('http://localhost:5000', 'http://localhost:8080');
+  }
+  if (url.startsWith('/uploads/')) {
+    return 'http://localhost:8080' + url;
+  }
+  return url;
+};
+
 const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, car }) => {
   const { currentUser } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -169,7 +180,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, car }) => {
                       <div className="d-flex align-items-center">
                         {car.mainPhotoUrl && (
                           <img 
-                            src={car.mainPhotoUrl} 
+                            src={normalizePhotoUrl(car.mainPhotoUrl)} 
                             alt={`${car.make} ${car.model}`} 
                             className="me-3" 
                             style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '4px' }}

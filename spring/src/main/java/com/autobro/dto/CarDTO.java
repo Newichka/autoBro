@@ -11,17 +11,16 @@ public class CarDTO {
     private String make;
     private String model;
     private Integer year;
-    private String bodyTypeName;
+    private String bodyType;
+    private Long bodyTypeId;
     private BigDecimal price;
     private Integer mileage;
-    private String engineInfo;
-    private String transmissionInfo;
-    private String colorName;
-    private String colorHexCode; // Добавлено поле для hex-кода цвета
-    private String condition;
+    private String color;
+    private Long colorId;
+    private String carCondition;
     private String location;
     private String mainPhotoUrl;
-    private List<String> allPhotoUrls;
+    private List<String> photos;
     private List<String> safetyFeatures;
     private List<String> equipment;
     private TechnicalSpecDTO technicalSpec;

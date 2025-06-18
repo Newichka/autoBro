@@ -3,7 +3,15 @@ package com.autobro.controller;
 import com.autobro.dto.ApiResponse;
 import com.autobro.dto.CarDTO;
 import com.autobro.dto.CarFilterDTO;
+import com.autobro.dto.CreateCarDTO;
+import com.autobro.model.Car;
+import com.autobro.model.Photo;
+import com.autobro.repository.BodyTypeRepository;
+import com.autobro.repository.ColorRepository;
 import com.autobro.service.CarService;
+import com.autobro.service.FileStorageService;
+import com.autobro.service.PhotoService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +35,10 @@ import java.util.Map;
 public class CarController {
 
     private final CarService carService;
+    private final FileStorageService fileStorageService;
+    private final PhotoService photoService;
+    private final BodyTypeRepository bodyTypeRepository;
+    private final ColorRepository colorRepository;
 
     @GetMapping("/{id}")
     @Operation(summary = "Получить информацию об автомобиле по ID")
@@ -37,13 +49,9 @@ public class CarController {
         return ResponseEntity.ok(ApiResponse.success(car));
     }
 
-    @PostMapping
-    @Operation(summary = "Создать новый автомобиль")
-    public ResponseEntity<ApiResponse<CarDTO>> createCar(
-            @Parameter(description = "Данные автомобиля")
-            @RequestBody CarDTO carDTO) {
-        CarDTO created = carService.createCar(carDTO);
-        return ResponseEntity.ok(ApiResponse.success(created, "Автомобиль успешно создан"));
+    @PostMapping("/create")
+    public ResponseEntity<CarDTO> createCar(@RequestBody CarDTO carDTO) {
+        return ResponseEntity.ok(carService.createCar(carDTO));
     }
 
     @PutMapping("/{id}")
@@ -133,5 +141,74 @@ public class CarController {
     public ResponseEntity<ApiResponse<Map<String, BigDecimal>>> getPriceRange() {
         Map<String, BigDecimal> priceRange = carService.getPriceRange();
         return ResponseEntity.ok(ApiResponse.success(priceRange));
+    }
+
+    @PostMapping
+    public ResponseEntity<?> createCarWithPhotos(
+            @RequestParam("car") String carJson,
+            @RequestParam(value = "mainPhoto", required = false) MultipartFile mainPhoto,
+            @RequestParam(value = "additionalPhotos", required = false) MultipartFile[] additionalPhotos) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            CreateCarDTO dto = mapper.readValue(carJson, CreateCarDTO.class);
+            
+            // Сначала создаем авто без фото
+            Car car = new Car();
+            car.setMake(dto.getMake());
+            car.setModel(dto.getModel());
+            car.setYear(dto.getYear());
+            car.setPrice(dto.getPrice());
+            car.setMileage(dto.getMileage());
+            car.setCarCondition(dto.getCarCondition());
+            car.setLocation(dto.getLocation());
+            
+            // bodyType
+            if (dto.getBodyTypeId() != null) {
+                car.setBodyType(bodyTypeRepository.findById(dto.getBodyTypeId()).orElse(null));
+            }
+            
+            // color
+            if (dto.getColorId() != null) {
+                car.setColor(colorRepository.findById(dto.getColorId()).orElse(null));
+            }
+            
+            // Сохраняем авто, чтобы получить ID
+            Car savedCar = carService.save(car);
+            
+            // Сохраняем главное фото
+            if (mainPhoto != null && !mainPhoto.isEmpty()) {
+                String mainPhotoPath = fileStorageService.storeFile(mainPhoto, savedCar.getId());
+                car.setMainPhotoUrl(mainPhotoPath);
+                
+                // Создаем запись в БД для главного фото
+                Photo mainPhotoEntity = new Photo();
+                mainPhotoEntity.setCar(savedCar);
+                mainPhotoEntity.setUrl(mainPhotoPath);
+                mainPhotoEntity.setMainPhoto(true);
+                photoService.save(mainPhotoEntity);
+            }
+            
+            // Сохраняем дополнительные фото
+            if (additionalPhotos != null) {
+                for (MultipartFile photo : additionalPhotos) {
+                    if (photo != null && !photo.isEmpty()) {
+                        String photoPath = fileStorageService.storeFile(photo, savedCar.getId());
+                        
+                        Photo photoEntity = new Photo();
+                        photoEntity.setCar(savedCar);
+                        photoEntity.setUrl(photoPath);
+                        photoEntity.setMainPhoto(false);
+                        photoService.save(photoEntity);
+                    }
+                }
+            }
+            
+            // Обновляем авто с фото
+            savedCar = carService.save(car);
+            return ResponseEntity.ok(savedCar);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Ошибка: " + e.getMessage());
+        }
     }
 } 

@@ -217,41 +217,30 @@ public class CarService {
         car.setMileage(validateMileage(carDTO.getMileage()));
 
         // BodyType
-        if (carDTO.getBodyTypeName() != null) {
-            BodyType bodyType = bodyTypeRepository.findByName(carDTO.getBodyTypeName())
+        if (carDTO.getBodyType() != null) {
+            BodyType bodyType = bodyTypeRepository.findByName(carDTO.getBodyType())
                 .orElseGet(() -> {
                     BodyType newBodyType = new BodyType();
-                    newBodyType.setName(carDTO.getBodyTypeName());
+                    newBodyType.setName(carDTO.getBodyType());
                     return bodyTypeRepository.save(newBodyType);
                 });
             car.setBodyType(bodyType);
         }
 
         // Color с поддержкой hex-кода
-        if (carDTO.getColorName() != null) {
-            Color color = colorRepository.findByName(carDTO.getColorName())
+        if (carDTO.getColor() != null) {
+            Color color = colorRepository.findByName(carDTO.getColor())
                 .orElseGet(() -> {
                     Color newColor = new Color();
-                    newColor.setName(carDTO.getColorName());
-                    // Устанавливаем hex-код, если он предоставлен
-                    if (carDTO.getColorHexCode() != null && !carDTO.getColorHexCode().isEmpty()) {
-                        newColor.setHexCode(carDTO.getColorHexCode());
-                    }
+                    newColor.setName(carDTO.getColor());
                     return colorRepository.save(newColor);
                 });
-            
-            // Обновляем hex-код существующего цвета, если он предоставлен
-            if (carDTO.getColorHexCode() != null && !carDTO.getColorHexCode().isEmpty() && 
-                (color.getHexCode() == null || !color.getHexCode().equals(carDTO.getColorHexCode()))) {
-                color.setHexCode(carDTO.getColorHexCode());
-                colorRepository.save(color);
-            }
             
             car.setColor(color);
         }
 
         // Строковые поля вместо связанных сущностей
-        car.setCarCondition(carDTO.getCondition());
+        car.setCarCondition(carDTO.getCarCondition());
         car.setLocation(carDTO.getLocation());
         car.setMainPhotoUrl(carDTO.getMainPhotoUrl());
         
@@ -454,41 +443,30 @@ public class CarService {
         car.setMileage(validateMileage(dto.getMileage()));
 
         // BodyType
-        if (dto.getBodyTypeName() != null) {
-            BodyType bodyType = bodyTypeRepository.findByName(dto.getBodyTypeName())
+        if (dto.getBodyType() != null) {
+            BodyType bodyType = bodyTypeRepository.findByName(dto.getBodyType())
                 .orElseGet(() -> {
                     BodyType newBodyType = new BodyType();
-                    newBodyType.setName(dto.getBodyTypeName());
+                    newBodyType.setName(dto.getBodyType());
                     return bodyTypeRepository.save(newBodyType);
                 });
             car.setBodyType(bodyType);
         }
 
         // Color с поддержкой hex-кода
-        if (dto.getColorName() != null) {
-            Color color = colorRepository.findByName(dto.getColorName())
+        if (dto.getColor() != null) {
+            Color color = colorRepository.findByName(dto.getColor())
                 .orElseGet(() -> {
                     Color newColor = new Color();
-                    newColor.setName(dto.getColorName());
-                    // Устанавливаем hex-код, если он предоставлен
-                    if (dto.getColorHexCode() != null && !dto.getColorHexCode().isEmpty()) {
-                        newColor.setHexCode(dto.getColorHexCode());
-                    }
+                    newColor.setName(dto.getColor());
                     return colorRepository.save(newColor);
                 });
-            
-            // Обновляем hex-код существующего цвета, если он предоставлен
-            if (dto.getColorHexCode() != null && !dto.getColorHexCode().isEmpty() && 
-                (color.getHexCode() == null || !color.getHexCode().equals(dto.getColorHexCode()))) {
-                color.setHexCode(dto.getColorHexCode());
-                colorRepository.save(color);
-            }
             
             car.setColor(color);
         }
 
         // Строковые поля вместо связанных сущностей
-        car.setCarCondition(dto.getCondition());
+        car.setCarCondition(dto.getCarCondition());
         car.setLocation(dto.getLocation());
         car.setMainPhotoUrl(dto.getMainPhotoUrl());
 
@@ -653,72 +631,59 @@ public class CarService {
         dto.setMake(car.getMake());
         dto.setModel(car.getModel());
         dto.setYear(car.getYear());
-        
-        // Обработка BodyType
-        if (car.getBodyType() != null) {
-            dto.setBodyTypeName(car.getBodyType().getName());
-        }
-        
         dto.setPrice(car.getPrice());
         dto.setMileage(car.getMileage());
-        
-        // Устанавливаем значения по умолчанию для engineInfo и transmissionInfo
-        dto.setEngineInfo("Не указано");
-        dto.setTransmissionInfo("Не указано");
-        
-        // Обработка технических характеристик и установка engineInfo и transmissionInfo
-        if (car.getTechnicalSpec() != null) {
-            TechnicalSpecDTO specDTO = new TechnicalSpecDTO();
-            TechnicalSpec spec = car.getTechnicalSpec();
-            specDTO.setFuelType(spec.getFuelType());
-            specDTO.setEngineVolume(spec.getEngineVolume());
-            specDTO.setHorsePower(spec.getHorsePower());
-            specDTO.setDriveType(spec.getDriveType());
-            specDTO.setTransmissionType(spec.getTransmissionType());
-            specDTO.setGears(spec.getGears());
-            specDTO.setEngineInfo(spec.getEngineInfo());
-            specDTO.setTransmissionInfo(spec.getTransmissionInfo());
-            dto.setTechnicalSpec(specDTO);
-            
-            // Используем информацию из техспеков для заполнения верхних полей CarDTO
-            if (spec.getEngineInfo() != null && !spec.getEngineInfo().isEmpty()) {
-                dto.setEngineInfo(spec.getEngineInfo());
-            }
-            
-            if (spec.getTransmissionInfo() != null && !spec.getTransmissionInfo().isEmpty()) {
-                dto.setTransmissionInfo(spec.getTransmissionInfo());
-            }
-        }
-        
-        // Обработка Color с поддержкой hex-кода
-        if (car.getColor() != null) {
-            dto.setColorName(car.getColor().getName());
-            dto.setColorHexCode(car.getColor().getHexCode());
-        }
-        
-        // Вместо связи с CarCondition, используем строковое поле
-        dto.setCondition(car.getCarCondition());
-        
-        // Вместо связи с Location, используем строковое поле
+        dto.setCarCondition(car.getCarCondition());
         dto.setLocation(car.getLocation());
         
-        // Фотографии
-        dto.setMainPhotoUrl(car.getMainPhotoUrl());
+        // BodyType
+        if (car.getBodyType() != null) {
+            dto.setBodyType(car.getBodyType().getName());
+            dto.setBodyTypeId(car.getBodyType().getId());
+        }
+        
+        // Color
+        if (car.getColor() != null) {
+            dto.setColor(car.getColor().getName());
+            dto.setColorId(car.getColor().getId());
+        }
+        
+        // TechnicalSpec
+        if (car.getTechnicalSpec() != null) {
+            TechnicalSpecDTO techSpec = new TechnicalSpecDTO();
+            techSpec.setFuelType(car.getTechnicalSpec().getFuelType());
+            techSpec.setEngineVolume(car.getTechnicalSpec().getEngineVolume());
+            techSpec.setHorsePower(car.getTechnicalSpec().getHorsePower());
+            techSpec.setDriveType(car.getTechnicalSpec().getDriveType());
+            techSpec.setTransmissionType(car.getTechnicalSpec().getTransmissionType());
+            techSpec.setEngineInfo(car.getTechnicalSpec().getEngineInfo());
+            techSpec.setTransmissionInfo(car.getTechnicalSpec().getTransmissionInfo());
+            techSpec.setGears(car.getTechnicalSpec().getGears());
+            dto.setTechnicalSpec(techSpec);
+        }
+        
+        // Photos
         if (car.getPhotos() != null && !car.getPhotos().isEmpty()) {
             List<String> photoUrls = car.getPhotos().stream()
-                    .map(photo -> photo != null ? photo.getUrl() : null)
+                    .map(Photo::getUrl)
                     .filter(url -> url != null)
                     .collect(Collectors.toList());
-            dto.setAllPhotoUrls(photoUrls);
+            dto.setPhotos(photoUrls);
         } else {
-            dto.setAllPhotoUrls(new ArrayList<>());
+            dto.setPhotos(new ArrayList<>());
+        }
+        
+        // Main photo URL
+        if (car.getMainPhotoUrl() != null) {
+            dto.setMainPhotoUrl(car.getMainPhotoUrl());
+        } else if (!dto.getPhotos().isEmpty()) {
+            dto.setMainPhotoUrl(dto.getPhotos().get(0));
         }
         
         // SafetyFeatures
         if (car.getSafetyFeatures() != null && !car.getSafetyFeatures().isEmpty()) {
             List<String> features = car.getSafetyFeatures().stream()
-                    .filter(feature -> feature != null)
-                    .map(feature -> feature.getName())
+                    .map(SafetyFeature::getName)
                     .filter(name -> name != null)
                     .collect(Collectors.toList());
             dto.setSafetyFeatures(features);
@@ -729,8 +694,7 @@ public class CarService {
         // Equipment
         if (car.getEquipment() != null && !car.getEquipment().isEmpty()) {
             List<String> equipment = car.getEquipment().stream()
-                    .filter(equip -> equip != null)
-                    .map(equip -> equip.getName())
+                    .map(Equipment::getName)
                     .filter(name -> name != null)
                     .collect(Collectors.toList());
             dto.setEquipment(equipment);
@@ -742,5 +706,10 @@ public class CarService {
         dto.setUpdatedAt(car.getUpdatedAt());
         
         return dto;
+    }
+
+    @Transactional
+    public Car save(Car car) {
+        return carRepository.save(car);
     }
 } 

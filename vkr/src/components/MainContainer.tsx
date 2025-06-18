@@ -646,6 +646,18 @@ const MainContainer: React.FC = () => {
     return activeOrders.some(order => order.carId === carId);
   };
 
+  // Функция для нормализации url фото
+  const normalizePhotoUrl = (url?: string) => {
+    if (!url) return '/car.png';
+    if (url.startsWith('http://localhost:5000/uploads/')) {
+      return url.replace('http://localhost:5000', 'http://localhost:8080');
+    }
+    if (url.startsWith('/uploads/')) {
+      return 'http://localhost:8080' + url;
+    }
+    return url;
+  };
+
   return (
     <div className="container-fluid mt-3">
       {/* Filter Section - Now takes full width */}
@@ -778,15 +790,16 @@ const MainContainer: React.FC = () => {
                         className="position-relative car-image-container"
                         onMouseMove={(e) => handleMouseMove(e, car.photos?.length || 1)}
                       >
-                        <img 
-                          src={car.photos && car.photos.length > 0
-                            ? (hoveredCarId === car.id && typeof hoveredPhotoIndex === 'number' && car.photos[hoveredPhotoIndex]
-                                ? car.photos[hoveredPhotoIndex]
-                                : car.photos[0])
-                            : (car.mainPhotoUrl || 'https://via.placeholder.com/300x200?text=Нет+фото')}
-                          className="card-img-top car-image w-100" 
+                        <img
+                          src={car.photos && car.photos.length > 0 && isHovering && hoveredCarId === car.id
+                            ? normalizePhotoUrl(car.photos[hoveredPhotoIndex])
+                            : (car.mainPhotoUrl ? normalizePhotoUrl(car.mainPhotoUrl) : '/car.png')}
                           alt={`${car.make} ${car.model}`}
-                          onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200?text=Нет+фото'; }}
+                          onError={(e) => { 
+                            console.error('Error loading image:', e.currentTarget.src);
+                            e.currentTarget.src = '/car.png'; 
+                          }}
+                          style={{ width: '100%', height: '200px', objectFit: 'cover' }}
                         />
                         {/* Photo indicator dots */}
                         {hoveredCarId === car.id && car.photos && car.photos.length > 1 && (
@@ -874,24 +887,21 @@ const MainContainer: React.FC = () => {
                 <div className="car-gallery mb-4">
                   <img 
                     src={selectedCar.photos && selectedCar.photos.length > 0
-                      ? selectedCar.photos[currentPhotoIndex]
-                      : (selectedCar.mainPhotoUrl || 'https://via.placeholder.com/800x500?text=Нет+фото')}
+                      ? normalizePhotoUrl(selectedCar.photos[currentPhotoIndex])
+                      : (selectedCar.mainPhotoUrl ? normalizePhotoUrl(selectedCar.mainPhotoUrl) : 'https://via.placeholder.com/800x500?text=Нет+фото')}
                     className={`main-image ${isPhotoChanging ? 'fade-out' : 'fade-in'}`}
                     alt={`${selectedCar.make} ${selectedCar.model} - Фото ${currentPhotoIndex + 1}`}
                     onClick={() => openFullscreen(selectedCar, currentPhotoIndex)}
                   />
                   {selectedCar.photos && selectedCar.photos.length > 1 && (
-                    <div className="thumbnail-container">
-                      {selectedCar.photos.map((url, index) => (
-                        <img
-                          key={index}
-                          src={url}
-                          alt={`${selectedCar.make} ${selectedCar.model} - Фото ${index + 1}`}
-                          className={`thumbnail ${index === currentPhotoIndex ? 'active' : ''}`}
-                          onClick={() => setCurrentPhotoIndex(index)}
-                        />
-                      ))}
-                    </div>
+                    <>
+                      <button className="carousel-control-prev" type="button" onClick={() => handlePhotoChange('prev')}>
+                        <span className="carousel-control-prev-icon" aria-hidden="true"></span>
+                      </button>
+                      <button className="carousel-control-next" type="button" onClick={() => handlePhotoChange('next')}>
+                        <span className="carousel-control-next-icon" aria-hidden="true"></span>
+                      </button>
+                    </>
                   )}
                 </div>
 
