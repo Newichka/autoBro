@@ -30,6 +30,10 @@ interface Car {
   mainPhotoUrl?: string;
   equipment?: string[];
   safetyFeatures?: string[];
+  engineInfo?: string;
+  transmissionInfo?: string;
+  gears?: number;
+  technicalSpec?: Car;
 }
 
 interface BodyType {
@@ -999,13 +1003,50 @@ const MainContainer: React.FC = () => {
                       </div>
                     </div>
 
-                    {selectedCar.condition && (
-                      <div className="car-info-section">
-                        <h4 className="section-title">Состояние</h4>
-                        <p className="description">{selectedCar.condition}</p>
-                      </div>
-                    )}
+                    {/* Технические характеристики */}
+                    <div className="car-info-section">
+                      <h4 className="section-title">Технические характеристики</h4>
+                      <ul className="list-unstyled mb-0">
+                        {/* fuelType */}
+                        {(selectedCar.fuelType || selectedCar.technicalSpec?.fuelType) && (
+                          <li><b>Тип топлива:</b> {selectedCar.fuelType || selectedCar.technicalSpec?.fuelType}</li>
+                        )}
+                        {/* engineVolume */}
+                        {(selectedCar.engineVolume !== undefined && selectedCar.engineVolume !== null) || (selectedCar.technicalSpec?.engineVolume !== undefined && selectedCar.technicalSpec?.engineVolume !== null) ? (
+                          <li><b>Объем двигателя:</b> {selectedCar.engineVolume ?? selectedCar.technicalSpec?.engineVolume} л</li>
+                        ) : null}
+                        {/* horsePower */}
+                        {(selectedCar.horsePower !== undefined && selectedCar.horsePower !== null) || (selectedCar.technicalSpec?.horsePower !== undefined && selectedCar.technicalSpec?.horsePower !== null) ? (
+                          <li><b>Мощность:</b> {selectedCar.horsePower ?? selectedCar.technicalSpec?.horsePower} л.с.</li>
+                        ) : null}
+                        {/* driveType */}
+                        {(selectedCar.driveType || selectedCar.technicalSpec?.driveType) && (
+                          <li><b>Тип привода:</b> {selectedCar.driveType || selectedCar.technicalSpec?.driveType}</li>
+                        )}
+                        {/* transmissionType */}
+                        {(selectedCar.transmissionType || selectedCar.technicalSpec?.transmissionType) && (
+                          <li><b>Тип трансмиссии:</b> {selectedCar.transmissionType || selectedCar.technicalSpec?.transmissionType}</li>
+                        )}
+                        {/* engineInfo */}
+                        {(selectedCar.engineInfo || selectedCar.technicalSpec?.engineInfo) && (
+                          <li><b>Доп. инфо о двигателе:</b> {selectedCar.engineInfo || selectedCar.technicalSpec?.engineInfo}</li>
+                        )}
+                        {/* transmissionInfo */}
+                        {(selectedCar.transmissionInfo || selectedCar.technicalSpec?.transmissionInfo) && (
+                          <li><b>Доп. инфо о трансмиссии:</b> {selectedCar.transmissionInfo || selectedCar.technicalSpec?.transmissionInfo}</li>
+                        )}
+                        {/* gears */}
+                        {(selectedCar.gears !== undefined && selectedCar.gears !== null) || (selectedCar.technicalSpec?.gears !== undefined && selectedCar.technicalSpec?.gears !== null) ? (
+                          <li><b>Количество передач:</b> {selectedCar.gears ?? selectedCar.technicalSpec?.gears}</li>
+                        ) : null}
+                        {/* createdAt */}
+                        {selectedCar.createdAt && (
+                          <li><b>Дата добавления:</b> {new Date(selectedCar.createdAt).toLocaleString()}</li>
+                        )}
+                      </ul>
+                    </div>
 
+                    {/* Дополнительно: safetyFeatures, equipment */}
                     {((selectedCar.equipment && selectedCar.equipment.length > 0) || (selectedCar.safetyFeatures && selectedCar.safetyFeatures.length > 0)) && (
                       <div className="car-info-section">
                         <h4 className="section-title">Дополнительные опции</h4>

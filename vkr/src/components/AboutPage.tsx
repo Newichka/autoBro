@@ -71,6 +71,29 @@ const AboutPage: React.FC = () => {
             </div>
           </div>
         </div>
+        <div className="col-12 mt-5">
+          <h2 className="text-center mb-4">Документы</h2>
+          <div className="row justify-content-center">
+            <div className="col-md-6">
+              <ul className="list-group list-group-flush">
+                <li className="list-group-item d-flex justify-content-between align-items-center">
+                  <span>Акт приёма-передачи</span>
+                  <a href="/docs/Акт%20приёма-передачи.docx" download className="btn btn-outline-primary btn-sm">
+                    Скачать
+                    <i className="bi bi-download ms-2"></i>
+                  </a>
+                </li>
+                <li className="list-group-item d-flex justify-content-between align-items-center">
+                  <span>Договор-заявка</span>
+                  <a href="/docs/Договор-заявка.docx" download className="btn btn-outline-primary btn-sm">
+                    Скачать
+                    <i className="bi bi-download ms-2"></i>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

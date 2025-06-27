@@ -3,6 +3,10 @@ import axios from 'axios';
 import { useAuth } from '../firebase/AuthContext';
 import AddCarModal from './AddCarModal';
 import CarListModal from './CarListModal';
+import { parseCars, ParsedCar } from '../services/carParserService';
+import ParsedCarsModal from './ParsedCarsModal';
+import { FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { IconBaseProps } from 'react-icons';
 
 // Interface for standard Orders
 interface Order {
@@ -59,6 +63,18 @@ const AdminPanel: React.FC = () => {
 
   const [isAddCarModalOpen, setIsAddCarModalOpen] = useState<boolean>(false);
   const [isCarListModalOpen, setIsCarListModalOpen] = useState<boolean>(false);
+  const [isParsedCarsModalOpen, setIsParsedCarsModalOpen] = useState<boolean>(false);
+  const [parsedCars, setParsedCars] = useState<ParsedCar[]>([]);
+  const [loadingParsedCars, setLoadingParsedCars] = useState<boolean>(false);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+
+  // Состояния для сортировки заявок на подбор
+  const [sortField, setSortField] = useState<'createdAt' | 'status' | 'userResponse'>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Состояния для сортировки заказов
+  const [sortFieldOrders, setSortFieldOrders] = useState<'createdAt' | 'status'>('createdAt');
+  const [sortDirectionOrders, setSortDirectionOrders] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     if (currentUser) {
@@ -275,6 +291,102 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleParseCars = async (request: CustomRequest) => {
+    setSelectedRequestId(request.id);
+    setLoadingParsedCars(true);
+    setIsParsedCarsModalOpen(true);
+    setParsedCars([]); // Очищаем предыдущие результаты
+
+    try {
+      console.log('Начало парсинга для заявки:', request);
+      const cars = await parseCars({
+        make: request.make,
+        model: request.model,
+        year: request.year,
+        minPrice: request.minPrice,
+        maxPrice: request.maxPrice,
+        color: request.color
+      });
+      console.log('Получены результаты парсинга:', cars);
+      setParsedCars(cars);
+    } catch (error) {
+      console.error('Ошибка при парсинге автомобилей:', error);
+      setParsedCars([]);
+      // Показываем уведомление об ошибке
+      alert(error instanceof Error ? error.message : 'Произошла ошибка при поиске автомобилей');
+    } finally {
+      setLoadingParsedCars(false);
+    }
+  };
+
+  const handleSelectCar = async (car: ParsedCar) => {
+    if (!selectedRequestId) return;
+    
+    try {
+      await axios.put(`http://localhost:3001/custom-requests/${selectedRequestId}`, {
+        suggestedCarUrl: car.url
+      });
+      fetchCustomRequests();
+      setIsParsedCarsModalOpen(false);
+    } catch (error) {
+      console.error('Ошибка при сохранении ссылки на автомобиль:', error);
+    }
+  };
+
+  // Функция сортировки заявок
+  const getSortedCustomRequests = () => {
+    const sorted = [...customRequests];
+    sorted.sort((a, b) => {
+      let aValue: any = a[sortField];
+      let bValue: any = b[sortField];
+      // Для даты сортируем по времени
+      if (sortField === 'createdAt') {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      }
+      // Для userResponse null всегда в конце
+      if (sortField === 'userResponse') {
+        const order: Record<string, number> = { accepted: 2, rejected: 1, null: 0 };
+        aValue = aValue === null || aValue === undefined ? 0 : order[String(aValue)] ?? 0;
+        bValue = bValue === null || bValue === undefined ? 0 : order[String(bValue)] ?? 0;
+      }
+      // Для status задаём порядок
+      if (sortField === 'status') {
+        const order: Record<string, number> = { new: 2, viewed: 1, closed: 0 };
+        aValue = order[String(aValue)] ?? 0;
+        bValue = order[String(bValue)] ?? 0;
+      }
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  };
+
+  // Функция сортировки заказов
+  const getSortedOrders = () => {
+    const sorted = [...orders];
+    sorted.sort((a, b) => {
+      let aValue: any = a[sortFieldOrders];
+      let bValue: any = b[sortFieldOrders];
+      if (sortFieldOrders === 'createdAt') {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      }
+      if (sortFieldOrders === 'status') {
+        const order: Record<string, number> = {
+          new: 4, processing: 3, in_transit: 2, completed: 1, cancelled: 0, awaiting_prepayment: 5, prepayment_received: 6, processing_docs: 7
+        };
+        aValue = order[String(aValue)] ?? 0;
+        bValue = order[String(bValue)] ?? 0;
+      }
+      if (aValue < bValue) return sortDirectionOrders === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirectionOrders === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  };
+
   return (
     <div className="container mt-4">
       <div className="row">
@@ -328,6 +440,29 @@ const AdminPanel: React.FC = () => {
               {activeTab === 'orders' && (
                 <>
                   <h6 className="mb-3">Управление заказами на автомобили</h6>
+                  <div className="mb-2 d-flex align-items-center gap-2">
+                    <span>Сортировать по:</span>
+                    <button
+                      className={`btn btn-sm ${sortFieldOrders === 'createdAt' ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => setSortFieldOrders('createdAt')}
+                    >
+                      Дате
+                      {sortFieldOrders === 'createdAt' && (sortDirectionOrders === 'asc' ? <FaSortUp className="icon-margin-left"/> : <FaSortDown className="icon-margin-left"/>) }
+                    </button>
+                    <button
+                      className={`btn btn-sm ${sortFieldOrders === 'status' ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => setSortFieldOrders('status')}
+                    >
+                      Статусу
+                      {sortFieldOrders === 'status' && (sortDirectionOrders === 'asc' ? <FaSortUp className="icon-margin-left"/> : <FaSortDown className="icon-margin-left"/>) }
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-secondary ms-2"
+                      onClick={() => setSortDirectionOrders(d => d === 'asc' ? 'desc' : 'asc')}
+                    >
+                      <FaSort className="icon-margin-right"/>{sortDirectionOrders === 'asc' ? 'По возрастанию' : 'По убыванию'}
+                    </button>
+                  </div>
                   {loadingOrders ? (
                     <div className="text-center p-5"><div className="spinner-border text-primary" role="status"><span className="visually-hidden">Загрузка...</span></div></div>
                   ) : orders.length === 0 ? (
@@ -339,7 +474,7 @@ const AdminPanel: React.FC = () => {
                           {/* Заголовки колонок убраны для компактности и современного вида */}
                         </thead>
                         <tbody>
-                          {orders.map((order, idx) => (
+                          {getSortedOrders().map((order, idx) => (
                             <tr key={order.id}>
                               <td colSpan={8} style={{
                                 background: idx % 2 === 0 ? '#e3f1fb' : '#ededed',
@@ -453,6 +588,37 @@ const AdminPanel: React.FC = () => {
               {activeTab === 'custom_requests' && (
                 <>
                   <h6 className="mb-3">Управление пользовательскими заявками на подбор</h6>
+                  {/* UI для сортировки */}
+                  <div className="mb-2 d-flex align-items-center gap-2">
+                    <span>Сортировать по:</span>
+                    <button
+                      className={`btn btn-sm ${sortField === 'createdAt' ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => setSortField('createdAt')}
+                    >
+                      Дате
+                      {sortField === 'createdAt' && (sortDirection === 'asc' ? <FaSortUp className="icon-margin-left"/> : <FaSortDown className="icon-margin-left"/>)}
+                    </button>
+                    <button
+                      className={`btn btn-sm ${sortField === 'status' ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => setSortField('status')}
+                    >
+                      Статусу
+                      {sortField === 'status' && (sortDirection === 'asc' ? <FaSortUp className="icon-margin-left"/> : <FaSortDown className="icon-margin-left"/>)}
+                    </button>
+                    <button
+                      className={`btn btn-sm ${sortField === 'userResponse' ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => setSortField('userResponse')}
+                    >
+                      Ответу
+                      {sortField === 'userResponse' && (sortDirection === 'asc' ? <FaSortUp className="icon-margin-left"/> : <FaSortDown className="icon-margin-left"/>)}
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-secondary ms-2"
+                      onClick={() => setSortDirection(d => d === 'asc' ? 'desc' : 'asc')}
+                    >
+                      <FaSort className="icon-margin-right"/>{sortDirection === 'asc' ? 'По возрастанию' : 'По убыванию'}
+                    </button>
+                  </div>
                   {loadingRequests ? (
                     <div className="text-center p-5"><div className="spinner-border text-info" role="status"><span className="visually-hidden">Загрузка...</span></div></div>
                   ) : customRequests.length === 0 ? (
@@ -472,7 +638,7 @@ const AdminPanel: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {customRequests.map((request) => (
+                          {getSortedCustomRequests().map((request) => (
                             <tr key={request.id}>
                               <td>{new Date(request.createdAt).toLocaleDateString()}</td>
                               <td>
@@ -541,6 +707,13 @@ const AdminPanel: React.FC = () => {
                                 <div className="btn-group">
                                   <button
                                     className="btn btn-sm btn-outline-primary"
+                                    onClick={() => handleParseCars(request)}
+                                  >
+                                    <i className="bi bi-search me-1"></i>
+                                    Найти авто
+                                  </button>
+                                  <button
+                                    className="btn btn-sm btn-outline-secondary"
                                     onClick={() => handleCustomRequestStatusChange(request.id, 'viewed')}
                                     disabled={request.status === 'viewed'}
                                   >
@@ -593,6 +766,15 @@ const AdminPanel: React.FC = () => {
         isOpen={isCarListModalOpen}
         onClose={() => setIsCarListModalOpen(false)}
         onCarDeleted={handleCarDeleted}
+      />
+
+      {/* Add ParsedCarsModal */}
+      <ParsedCarsModal
+        isOpen={isParsedCarsModalOpen}
+        onClose={() => setIsParsedCarsModalOpen(false)}
+        cars={parsedCars}
+        onSelectCar={handleSelectCar}
+        loading={loadingParsedCars}
       />
     </div>
   );

@@ -10,9 +10,9 @@ const Register: React.FC<RegisterProps> = ({ onClose, switchToLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'user' | 'admin'>('user');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [agree, setAgree] = useState(false);
   
   const { register } = useAuth();
   
@@ -37,7 +37,7 @@ const Register: React.FC<RegisterProps> = ({ onClose, switchToLogin }) => {
     try {
       setError('');
       setLoading(true);
-      await register(email, password, role);
+      await register(email, password, 'user');
       onClose();
     } catch (err: any) {
       setError('Ошибка регистрации: ' + (err.message || 'Неизвестная ошибка'));
@@ -95,45 +95,25 @@ const Register: React.FC<RegisterProps> = ({ onClose, switchToLogin }) => {
             />
           </div>
           
-          <div className="mb-3">
-            <label className="form-label">Роль</label>
-            <div>
-              <div className="form-check form-check-inline">
-                <input
-                  className="form-check-input"
-                  type="radio"
-                  name="role"
-                  id="roleUser"
-                  value="user"
-                  checked={role === 'user'}
-                  onChange={() => setRole('user')}
-                />
-                <label className="form-check-label" htmlFor="roleUser">
-                  Пользователь
-                </label>
-              </div>
-              <div className="form-check form-check-inline">
-                <input
-                  className="form-check-input"
-                  type="radio"
-                  name="role"
-                  id="roleAdmin"
-                  value="admin"
-                  checked={role === 'admin'}
-                  onChange={() => setRole('admin')}
-                />
-                <label className="form-check-label" htmlFor="roleAdmin">
-                  Администратор
-                </label>
-              </div>
-            </div>
+          <div className="mb-3 form-check">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              id="agreePersonalData"
+              checked={agree}
+              onChange={() => setAgree(!agree)}
+              required
+            />
+            <label className="form-check-label" htmlFor="agreePersonalData">
+              Я соглашаюсь с <a href="/personal-data-agreement" target="_blank" rel="noopener noreferrer">условиями обработки персональных данных</a>
+            </label>
           </div>
           
           <div className="d-grid gap-2">
             <button 
               type="submit" 
               className="btn btn-primary"
-              disabled={loading}
+              disabled={loading || !agree}
             >
               {loading ? 'Регистрация...' : 'Зарегистрироваться'}
             </button>

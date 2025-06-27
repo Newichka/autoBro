@@ -13,6 +13,7 @@ import { AuthProvider } from './firebase/AuthContext';
 import HomePage from './components/HomePage';
 import AboutPage from './components/AboutPage';
 import ContactPage from './components/ContactPage';
+import PersonalDataAgreement from './components/PersonalDataAgreement';
 
 const App: React.FC = () => {
   return (
@@ -36,6 +37,7 @@ const App: React.FC = () => {
                 <UserProfile />
               </ProtectedRoute>
             } />
+            <Route path="/personal-data-agreement" element={<PersonalDataAgreement />} />
             <Route path="*" element={<HomePage />} />
           </Routes>
         </div>

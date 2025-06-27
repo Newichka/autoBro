@@ -3,6 +3,8 @@ const cors = require("cors");
 const morgan = require("morgan");
 const low = require("lowdb");
 const FileSync = require("lowdb/adapters/FileSync");
+const { spawn } = require('child_process');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -299,6 +301,44 @@ app.delete("/custom-requests/:id", (req, res) => {
   }
   db.get("custom_requests").remove({ id: req.params.id }).write();
   res.json({ message: "Заявка удалена" });
+});
+
+// Новый роут для парсинга через Python-скрипт drom.ru
+app.post('/api/parse-cars', async (req, res) => {
+  const { make, model, year, minPrice, maxPrice } = req.body;
+  // Формируем аргументы для Python-скрипта
+  const args = [];
+  if (make) args.push('--make', make);
+  if (model) args.push('--model', model);
+  if (year) args.push('--year', year);
+  if (minPrice) args.push('--min_price', minPrice);
+  if (maxPrice) args.push('--max_price', maxPrice);
+
+  const scriptPath = path.join(__dirname, 'dromru', 'main.py');
+  const py = spawn('python', [scriptPath, ...args]);
+
+  let data = '';
+  let error = '';
+  py.stdout.on('data', (chunk) => { data += chunk; });
+  py.stderr.on('data', (chunk) => { error += chunk; });
+  py.on('close', (code) => {
+    console.log('--- PYTHON PARSER LOG ---');
+    console.log('stdout:', data);
+    console.log('stderr:', error);
+    console.log('exit code:', code);
+    if (code !== 0 || error) {
+      res.status(500).json({ error: error || 'Ошибка выполнения парсера drom.ru' });
+    } else {
+      try {
+        const cars = JSON.parse(data);
+        console.log('Ответ, отправляемый на фронт:', cars);
+        res.json(cars);
+      } catch (e) {
+        console.log('Ошибка парсинга JSON:', e.message);
+        res.status(500).json({ error: 'Ошибка парсинга результата drom.ru: ' + e.message });
+      }
+    }
+  });
 });
 
 // Запуск сервера

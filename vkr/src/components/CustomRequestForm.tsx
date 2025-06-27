@@ -16,7 +16,6 @@ const CustomRequestForm: React.FC<CustomRequestFormProps> = ({ onClose }) => {
     maxPrice: '', // Новый бюджет до
     color: '',    // Новый цвет
     trim: '',
-    condition: '',
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -72,7 +71,7 @@ const CustomRequestForm: React.FC<CustomRequestFormProps> = ({ onClose }) => {
         color: formData.color || undefined,
       });
       setSuccess(true);
-      setFormData({ make: '', model: '', year: '', minPrice: '', maxPrice: '', color: '', trim: '', condition: '' }); // Reset form
+      setFormData({ make: '', model: '', year: '', minPrice: '', maxPrice: '', color: '', trim: '' }); // Reset form
       setTimeout(() => {
         onClose(); // Close form after a delay
       }, 2500);
@@ -125,10 +124,6 @@ const CustomRequestForm: React.FC<CustomRequestFormProps> = ({ onClose }) => {
               <div className="col-12">
                 <label htmlFor="trim" className="form-label">Комплектация (описание)</label>
                 <textarea className="form-control" id="trim" name="trim" value={formData.trim} onChange={handleChange} required placeholder="Опишите желаемую комплектацию (например, двигатель, коробка, опции)" rows={3}></textarea>
-              </div>
-              <div className="col-12">
-                <label htmlFor="condition" className="form-label">Состояние (описание)</label>
-                <textarea className="form-control" id="condition" name="condition" value={formData.condition} onChange={handleChange} required placeholder="Опишите желаемое состояние (например, пробег, состояние кузова, тех. часть)" rows={3}></textarea>
               </div>
             </div>
 

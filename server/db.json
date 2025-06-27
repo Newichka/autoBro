@@ -19,13 +19,13 @@
       "country": "Россия",
       "city": "Екатеринбург",
       "address": "Ломоносова 52",
-      "updatedAt": "2025-06-18T10:11:22.678Z",
+      "updatedAt": "2025-06-23T17:32:29.265Z",
       "createdAt": "2025-06-08T17:35:41.223Z"
     }
   ],
   "orders": [
     {
-      "id": "1749572767567",
+      "id": "1750694233577",
       "uid": "xBk9gyHMiw348cWPWFqJ",
       "userEmail": "user2@2.com",
       "fullName": "Шолохов Артём Иванович",
@@ -33,19 +33,41 @@
       "country": "Россия",
       "city": "Екатеринбург",
       "address": "Ломоносова 52",
-      "carId": 5,
+      "carId": 6,
       "carInfo": {
-        "id": 5,
-        "make": "Volkswagen",
-        "model": "Tiguan",
-        "year": 2020,
-        "price": 2850000,
-        "mainPhotoUrl": "https://placehold.co/600x400/eeeeee/333333?text=VW+Tiguan+2020"
+        "id": 6,
+        "make": "Kia",
+        "model": "K5",
+        "year": 2022,
+        "price": 2350000,
+        "mainPhotoUrl": "https://placehold.co/600x400/0000cc/white?text=Kia+K5+2022"
       },
-      "createdAt": "2025-06-10T16:26:07.567Z",
-      "updatedAt": "2025-06-18T11:03:53.712Z",
+      "status": "new",
+      "createdAt": "2025-06-23T15:57:13.577Z",
+      "updatedAt": "2025-06-23T15:57:13.577Z"
+    },
+    {
+      "id": "1750699949273",
+      "uid": "xBk9gyHMiw348cWPWFqJ",
+      "userEmail": "user2@2.com",
+      "fullName": "Шолохов Артём Иванович",
+      "phone": "+7(952)726-96-26",
+      "country": "Россия",
+      "city": "Екатеринбург",
+      "address": "Ломоносова 52",
+      "carId": 97,
+      "carInfo": {
+        "id": 97,
+        "make": "Lada",
+        "model": "Vesta",
+        "year": 2020,
+        "price": 1500000,
+        "mainPhotoUrl": "/uploads/cars/97/11526437-f321-459b-b6df-3e431836907b.jpg"
+      },
       "status": "processing",
-      "deliveryPrice": 200000
+      "deliveryPrice": 250000,
+      "createdAt": "2025-06-23T17:32:29.273Z",
+      "updatedAt": "2025-06-23T17:33:17.625Z"
     }
   ],
   "custom_requests": [
@@ -63,10 +85,51 @@
       "color": "Чёрный",
       "trim": "Полная",
       "condition": "Новая",
-      "status": "new",
+      "status": "viewed",
       "createdAt": "2025-06-13T11:02:57.897Z",
-      "updatedAt": "2025-06-18T15:19:04.043Z",
-      "suggestedCarUrl": "http://localhost:5000/admin"
+      "updatedAt": "2025-06-27T07:34:11.477Z",
+      "suggestedCarUrl": "https://www.copart.com/lot/916108",
+      "userResponse": "accepted"
+    },
+    {
+      "id": "cr_1750313977268",
+      "userId": "xBk9gyHMiw348cWPWFqJ",
+      "userEmail": "user2@2.com",
+      "fullName": "Шолохов Артём Иванович",
+      "phone": "+7(952)726-96-26",
+      "make": "Audi",
+      "model": "RS7",
+      "year": 2024,
+      "minPrice": 1000,
+      "maxPrice": 2000000,
+      "color": "Чёрный",
+      "trim": "Полная",
+      "condition": "Не требует ремонта",
+      "status": "viewed",
+      "userResponse": null,
+      "suggestedCarUrl": null,
+      "createdAt": "2025-06-19T06:19:37.268Z",
+      "updatedAt": "2025-06-23T17:33:28.085Z"
+    },
+    {
+      "id": "cr_1750696831021",
+      "userId": "xBk9gyHMiw348cWPWFqJ",
+      "userEmail": "user2@2.com",
+      "fullName": "Шолохов Артём Иванович",
+      "phone": "+7(952)726-96-26",
+      "make": "Audi",
+      "model": "A7",
+      "year": 2020,
+      "minPrice": 1,
+      "maxPrice": 1000000000,
+      "color": "Чёрный",
+      "trim": "da",
+      "condition": "da",
+      "status": "new",
+      "userResponse": null,
+      "suggestedCarUrl": null,
+      "createdAt": "2025-06-23T16:40:31.021Z",
+      "updatedAt": "2025-06-23T16:40:31.021Z"
     }
   ]
 }

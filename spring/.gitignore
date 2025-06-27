@@ -33,11 +33,9 @@ build/
 .vscode/
 
 ### Application specific ###
-/uploads/
+
 /logs/
 application-local.yml
 *.log
 
 # Uploaded files
-/uploads/
-uploads/ 
