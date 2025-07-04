@@ -24,6 +24,14 @@ interface BodyType {
   name: string;
 }
 
+interface EquipmentOption {
+  id: number;
+  name: string;
+  category: string;
+  description?: string;
+  is_standard?: boolean;
+}
+
 interface CarDTO {
   make: string;
   model: string;
@@ -45,10 +53,13 @@ interface CarDTO {
 interface AddCarModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCarAdded: (car: CarDTO) => void; // Consider if the full DTO is needed here or just an ID/success message
+  onCarAdded?: (car: CarDTO) => void;
+  carToEdit?: any; // CarDTO | null
+  isEdit?: boolean;
+  onCarEdited?: (car: CarDTO) => void;
 }
 
-const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }) => {
+const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded, carToEdit, isEdit, onCarEdited }) => {
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
   const [year, setYear] = useState<number | ''>('');
@@ -75,6 +86,9 @@ const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [equipmentOptions, setEquipmentOptions] = useState<EquipmentOption[]>([]);
+  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
+
   useEffect(() => {
     if (isOpen) {
       axios.get('/dictionary/body-types')
@@ -93,8 +107,33 @@ const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }
           setColors([]);
           setError('Не удалось загрузить цвета');
         });
+      axios.get('/dictionary/equipment')
+        .then(res => setEquipmentOptions(res.data.data || res.data.content || []))
+        .catch(() => setEquipmentOptions([]));
+      if (isEdit && carToEdit) {
+        setMake(carToEdit.make || '');
+        setModel(carToEdit.model || '');
+        setYear(carToEdit.year || '');
+        setSelectedBodyTypeId(carToEdit.bodyTypeId || '');
+        setPrice(carToEdit.price || '');
+        setMileage(carToEdit.mileage || '');
+        setEngineInfoState(carToEdit.technicalSpec?.engineInfo || '');
+        setTransmissionInfoState(carToEdit.technicalSpec?.transmissionInfo || '');
+        setSelectedColorId(carToEdit.colorId || '');
+        setCondition(carToEdit.carCondition || '');
+        setLocation(carToEdit.location || '');
+        setFuelType(carToEdit.technicalSpec?.fuelType || '');
+        setEngineVolume(carToEdit.technicalSpec?.engineVolume || '');
+        setHorsePower(carToEdit.technicalSpec?.horsePower || '');
+        setDriveType(carToEdit.technicalSpec?.driveType || '');
+        setTransmissionTypeSpec(carToEdit.technicalSpec?.transmissionType || '');
+        setGears(carToEdit.technicalSpec?.gears || '');
+        setSelectedEquipment(carToEdit.equipment || []);
+      } else {
+        setMake(''); setModel(''); setYear(''); setSelectedBodyTypeId(''); setPrice(''); setMileage(''); setEngineInfoState(''); setTransmissionInfoState(''); setSelectedColorId(''); setCondition(''); setLocation(''); setFuelType(''); setEngineVolume(''); setHorsePower(''); setDriveType(''); setTransmissionTypeSpec(''); setGears(''); setSelectedEquipment([]);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, isEdit, carToEdit]);
 
   if (!isOpen) return null;
 
@@ -141,28 +180,37 @@ const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }
         transmissionInfo: transmissionInfoState,
         gears: gears === '' ? undefined : Number(gears),
       },
+      equipment: selectedEquipment,
     };
 
-    const formData = new FormData();
-    formData.append('car', JSON.stringify(carData));
-    
-    if (mainPhoto) {
-      formData.append('mainPhoto', mainPhoto);
-    }
-    
-    additionalPhotos.forEach((photo) => {
-      formData.append('additionalPhotos', photo);
-    });
-
     try {
-      const response = await axios.post('/cars', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      let response;
+      if (isEdit && carToEdit) {
+        // 1. Сначала обновляем данные авто (PUT, только JSON)
+        response = await axios.put(`/cars/${carToEdit.id}`, carData);
+        // 2. Если выбраны новые фото — отправляем их отдельным POST-запросом
+        if ((mainPhoto || (additionalPhotos && additionalPhotos.length > 0)) && response.status === 200) {
+          const formData = new FormData();
+          if (mainPhoto) formData.append('files', mainPhoto);
+          additionalPhotos.forEach((photo) => { formData.append('files', photo); });
+          await axios.post(`/cars/${carToEdit.id}/photos`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+        }
+      } else {
+        // Добавление нового авто
+        const formData = new FormData();
+        formData.append('car', JSON.stringify(carData));
+        if (mainPhoto) formData.append('mainPhoto', mainPhoto);
+        additionalPhotos.forEach((photo) => { formData.append('additionalPhotos', photo); });
+        response = await axios.post('/api/cars', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
 
-      if (response.status === 200) {
-        onCarAdded(response.data);
+      if ((response && (response.status === 200 || response.status === 201)) || isEdit) {
+        if (isEdit && onCarEdited) onCarEdited(response?.data);
+        if (!isEdit && onCarAdded) onCarAdded(response?.data);
         onClose();
       }
     } catch (error: any) {
@@ -180,7 +228,7 @@ const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }
   return (
     <div className="modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050 }}>
       <div className="modal-content bg-white p-4 rounded shadow-lg" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
-        <h5 className="mb-3">Добавить новый автомобиль</h5>
+        <h5 className="mb-3">{isEdit ? 'Редактировать автомобиль' : 'Добавить новый автомобиль'}</h5>
         {error && <div className="alert alert-danger">{error}</div>}
         <form onSubmit={handleSubmit}>
           {/* Basic Car Info */}
@@ -288,6 +336,25 @@ const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }
           </div>
 
           <div className="mb-3">
+            <label htmlFor="equipmentSelect" className="form-label">Дополнительные опции</label>
+            <select
+              multiple
+              className="form-select"
+              id="equipmentSelect"
+              value={selectedEquipment}
+              onChange={e => {
+                const options = Array.from(e.target.selectedOptions, option => option.value);
+                setSelectedEquipment(options);
+              }}
+            >
+              {equipmentOptions.map(opt => (
+                <option key={opt.id} value={opt.name}>{opt.name} {opt.category ? `(${opt.category})` : ''}</option>
+              ))}
+            </select>
+            <div className="form-text">Зажмите Ctrl (или Cmd на Mac), чтобы выбрать несколько опций</div>
+          </div>
+
+          <div className="mb-3">
             <label htmlFor="mainPhoto" className="form-label">Главное фото</label>
             <input
               type="file"
@@ -314,7 +381,7 @@ const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onCarAdded }
           <div className="d-flex justify-content-end">
             <button type="button" className="btn btn-secondary me-2" onClick={onClose} disabled={isLoading}>Отмена</button>
             <button type="submit" className="btn btn-primary" disabled={isLoading}>
-              {isLoading ? 'Добавление...' : 'Добавить автомобиль'}
+              {isLoading ? (isEdit ? 'Сохранение...' : 'Добавление...') : (isEdit ? 'Сохранить изменения' : 'Добавить автомобиль')}
             </button>
           </div>
         </form>

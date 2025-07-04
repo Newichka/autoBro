@@ -26,6 +26,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.nio.file.StandardCopyOption;
+import com.autobro.model.enums.EquipmentCategory;
 
 @Service
 @RequiredArgsConstructor
@@ -322,22 +323,6 @@ public class CarService {
             car.setSafetyFeatures(safetyFeatures);
             car = carRepository.save(car);
         }
-
-        // Equipment
-        if (carDTO.getEquipment() != null && !carDTO.getEquipment().isEmpty()) {
-            List<Equipment> equipment = new ArrayList<>();
-            for (String equipmentName : carDTO.getEquipment()) {
-                Equipment equip = equipmentRepository.findByName(equipmentName)
-                    .orElseGet(() -> {
-                        Equipment newEquip = new Equipment();
-                        newEquip.setName(equipmentName);
-                        return equipmentRepository.save(newEquip);
-                    });
-                equipment.add(equip);
-            }
-            car.setEquipment(equipment);
-            car = carRepository.save(car);
-        }
         
         return convertToDTO(car);
     }
@@ -404,8 +389,10 @@ public class CarService {
             .orElseThrow(() -> new NotFoundException("Car", id));
 
         List<String> uploadedPhotos = new ArrayList<>();
-        
-        for (MultipartFile file : files) {
+        String firstPhotoUrl = null;
+
+        for (int i = 0; i < files.size(); i++) {
+            MultipartFile file = files.get(i);
             try {
                 // Создаем директорию для фотографий если её нет
                 Path uploadDir = Paths.get(uploadPath, "cars", id.toString());
@@ -423,18 +410,23 @@ public class CarService {
 
                 // Формируем публичный URL для доступа к изображению
                 String publicUrl = "/uploads/cars/" + id + "/" + filename;
+                if (i == 0) firstPhotoUrl = publicUrl;
 
                 // Создаем запись в базе
                 Photo photo = new Photo();
                 photo.setCar(car);
                 photo.setUrl(publicUrl);
-
                 photoRepository.save(photo);
                 uploadedPhotos.add(publicUrl);
-
             } catch (IOException e) {
                 throw new RuntimeException("Failed to store file", e);
             }
+        }
+
+        // Обновляем mainPhotoUrl у машины
+        if (firstPhotoUrl != null) {
+            car.setMainPhotoUrl(firstPhotoUrl);
+            carRepository.save(car);
         }
 
         return uploadedPhotos;
@@ -461,6 +453,38 @@ public class CarService {
         }
 
         photoRepository.delete(photo);
+    }
+
+    @Transactional
+    public void deleteAllPhotos(Long carId) {
+        Car car = carRepository.findById(carId)
+            .orElseThrow(() -> new NotFoundException("Car", carId));
+        // Удаляем все фото из базы по carId
+        List<Photo> allPhotos = photoRepository.findByCarId(carId);
+        for (Photo photo : allPhotos) {
+            try {
+                Path photoPath = Paths.get(uploadPath, photo.getUrl().replace("/uploads/", ""));
+                if (Files.exists(photoPath)) {
+                    Files.delete(photoPath);
+                }
+            } catch (Exception e) {
+                System.err.println("Ошибка при удалении фото: " + e.getMessage());
+            }
+            photoRepository.delete(photo);
+        }
+        // Удаляем директорию с фото
+        Path carPhotosDir = Paths.get(uploadPath, "cars", carId.toString());
+        if (Files.exists(carPhotosDir)) {
+            try {
+                Files.walk(carPhotosDir)
+                    .sorted((p1, p2) -> -p1.compareTo(p2))
+                    .forEach(path -> {
+                        try { Files.delete(path); } catch (Exception e) { }
+                    });
+            } catch (Exception e) {
+                System.err.println("Ошибка при удалении директории с фото: " + e.getMessage());
+            }
+        }
     }
 
     private void updateCarFromDTO(Car car, CarDTO dto) {
@@ -512,21 +536,6 @@ public class CarService {
                 safetyFeatures.add(feature);
             }
             car.setSafetyFeatures(safetyFeatures);
-        }
-
-        // Equipment
-        if (dto.getEquipment() != null) {
-            List<Equipment> equipment = new ArrayList<>();
-            for (String equipmentName : dto.getEquipment()) {
-                Equipment equip = equipmentRepository.findByName(equipmentName)
-                    .orElseGet(() -> {
-                        Equipment newEquip = new Equipment();
-                        newEquip.setName(equipmentName);
-                        return equipmentRepository.save(newEquip);
-                    });
-                equipment.add(equip);
-            }
-            car.setEquipment(equipment);
         }
 
         // TechnicalSpec
@@ -585,13 +594,6 @@ public class CarService {
         return featureNames.stream()
             .map(name -> safetyFeatureRepository.findByName(name)
                 .orElseThrow(() -> new NotFoundException("SafetyFeature", name)))
-            .collect(Collectors.toList());
-    }
-
-    private List<Equipment> findEquipment(List<String> equipmentNames) {
-        return equipmentNames.stream()
-            .map(name -> equipmentRepository.findByName(name)
-                .orElseThrow(() -> new NotFoundException("Equipment", name)))
             .collect(Collectors.toList());
     }
 
@@ -718,17 +720,6 @@ public class CarService {
             dto.setSafetyFeatures(features);
         } else {
             dto.setSafetyFeatures(new ArrayList<>());
-        }
-        
-        // Equipment
-        if (car.getEquipment() != null && !car.getEquipment().isEmpty()) {
-            List<String> equipment = car.getEquipment().stream()
-                    .map(Equipment::getName)
-                    .filter(name -> name != null)
-                    .collect(Collectors.toList());
-            dto.setEquipment(equipment);
-        } else {
-            dto.setEquipment(new ArrayList<>());
         }
         
         dto.setCreatedAt(car.getCreatedAt());

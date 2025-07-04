@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AddCarModal from './AddCarModal';
 
 interface Car {
   id: number;
@@ -23,6 +24,9 @@ const CarListModal: React.FC<CarListModalProps> = ({ isOpen, onClose, onCarDelet
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [pagination, setPagination] = useState({ page: 0, totalPages: 0, totalElements: 0 });
   const [pageSize] = useState(50); // Увеличиваем размер страницы
+  const [editCar, setEditCar] = useState<Car | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -76,14 +80,22 @@ const CarListModal: React.FC<CarListModalProps> = ({ isOpen, onClose, onCarDelet
     setPagination(prev => ({ ...prev, page: newPage }));
   };
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    setClosing(true);
+    setTimeout(() => {
+      setClosing(false);
+      onClose();
+    }, 350);
+  };
+
+  if (!isOpen && !closing) return null;
 
   return (
-    <div className="modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050 }}>
-      <div className="modal-content bg-white p-4 rounded shadow-lg" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+    <div className={`modal-backdrop animated-backdrop${closing ? ' closing' : ''}`} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050 }}>
+      <div className={`modal-content bg-white p-4 rounded shadow-lg animated-modal${closing ? ' closing' : ''}`} style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h5 className="mb-0">Управление автомобилями</h5>
-          <button type="button" className="btn-close" onClick={onClose} aria-label="Close"></button>
+          <button type="button" className="btn-close" onClick={handleClose} aria-label="Close"></button>
         </div>
         
         {error && <div className="alert alert-danger">{error}</div>}
@@ -108,9 +120,7 @@ const CarListModal: React.FC<CarListModalProps> = ({ isOpen, onClose, onCarDelet
                       <th>Марка</th>
                       <th>Модель</th>
                       <th>Год</th>
-                      <th>Цвет</th>
-                      <th>Цена</th>
-                      <th>Состояние</th>
+                      <th style={{ minWidth: '120px', width: '140px' }}>Цена</th>
                       <th>Действия</th>
                     </tr>
                   </thead>
@@ -121,16 +131,24 @@ const CarListModal: React.FC<CarListModalProps> = ({ isOpen, onClose, onCarDelet
                         <td>{car.make}</td>
                         <td>{car.model}</td>
                         <td>{car.year}</td>
-                        <td>{car.colorName}</td>
-                        <td>{car.price.toLocaleString()} ₽</td>
-                        <td>{car.condition}</td>
+                        <td style={{ minWidth: '120px', width: '140px', fontWeight: 600 }}>{car.price.toLocaleString()} ₽</td>
                         <td>
-                          <button 
-                            className="btn btn-sm btn-danger"
-                            onClick={() => handleDeleteClick(car.id)}
-                          >
-                            <i className="bi bi-trash"></i> Удалить
-                          </button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              className="btn btn-sm btn-primary"
+                              style={{ minWidth: 110 }}
+                              onClick={() => { setEditCar(car); setIsEditModalOpen(true); }}
+                            >
+                              <i className="bi bi-pencil-square"></i> Редактировать
+                            </button>
+                            <button
+                              className="btn btn-sm btn-danger"
+                              style={{ minWidth: 110 }}
+                              onClick={() => handleDeleteClick(car.id)}
+                            >
+                              <i className="bi bi-trash"></i> Удалить
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -162,6 +180,16 @@ const CarListModal: React.FC<CarListModalProps> = ({ isOpen, onClose, onCarDelet
               </li>
             </ul>
           </nav>
+        )}
+
+        {isEditModalOpen && (
+          <AddCarModal
+            isOpen={isEditModalOpen}
+            onClose={() => { setIsEditModalOpen(false); setEditCar(null); }}
+            carToEdit={editCar}
+            isEdit={true}
+            onCarEdited={() => { setIsEditModalOpen(false); setEditCar(null); fetchCars(); }}
+          />
         )}
       </div>
     </div>

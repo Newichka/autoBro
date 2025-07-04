@@ -652,7 +652,7 @@ const AdminPanel: React.FC = () => {
                                 <div className="text-truncate" title={request.trim}>{request.trim}</div>
                                 <div className="text-truncate" title={request.condition}>{request.condition}</div>
                                 {request.minPrice && request.maxPrice && (
-                                  <div>Цена: {request.minPrice} - {request.maxPrice} $</div>
+                                  <div>Цена: {request.minPrice} - {request.maxPrice} ₽</div>
                                 )}
                                 {request.color && <div>Цвет: {request.color}</div>}
                               </td>
@@ -665,22 +665,12 @@ const AdminPanel: React.FC = () => {
                                 <input
                                   type="text"
                                   className="form-control form-control-sm"
+                                  style={{ width: '220px', minWidth: '120px', maxWidth: '100%' }}
                                   value={request.suggestedCarUrl || ''}
                                   onChange={(e) => handleSuggestedCarUrlChange(request.id, e.target.value)}
                                   onBlur={(e) => saveSuggestedCarUrl(request.id, e.target.value)}
                                   placeholder="Ссылка на предложенный автомобиль"
                                 />
-                                {request.suggestedCarUrl && (
-                                  <a
-                                    href={request.suggestedCarUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="d-block text-truncate mt-1"
-                                    style={{ fontSize: '0.8rem' }}
-                                  >
-                                    {request.suggestedCarUrl}
-                                  </a>
-                                )}
                               </td>
                               <td>
                                 <span className={`badge ${getUserResponseBadgeClass(request.userResponse)}`}>
@@ -705,13 +695,6 @@ const AdminPanel: React.FC = () => {
                               </td>
                               <td>
                                 <div className="btn-group">
-                                  <button
-                                    className="btn btn-sm btn-outline-primary"
-                                    onClick={() => handleParseCars(request)}
-                                  >
-                                    <i className="bi bi-search me-1"></i>
-                                    Найти авто
-                                  </button>
                                   <button
                                     className="btn btn-sm btn-outline-secondary"
                                     onClick={() => handleCustomRequestStatusChange(request.id, 'viewed')}

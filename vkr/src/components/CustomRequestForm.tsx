@@ -16,6 +16,7 @@ const CustomRequestForm: React.FC<CustomRequestFormProps> = ({ onClose }) => {
     maxPrice: '', // Новый бюджет до
     color: '',    // Новый цвет
     trim: '',
+    condition: '', // <--- добавлено поле состояние
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -35,11 +36,21 @@ const CustomRequestForm: React.FC<CustomRequestFormProps> = ({ onClose }) => {
       setError('Пожалуйста, войдите в систему, чтобы отправить заявку.');
       return;
     }
-
-    // Additional check to ensure currentUser.id is available
     if (!currentUser.id) {
-        setError('Не удалось получить ID пользователя. Пожалуйста, попробуйте перезайти в систему.');
+      setError('Не удалось получить ID пользователя. Пожалуйста, попробуйте перезайти в систему.');
+      return;
+    }
+
+    // Ограничение: не больше 2 заявок
+    try {
+      const existingRequests = await axios.get(`http://localhost:3001/custom-requests?userId=${currentUser.id}`);
+      if (existingRequests.data.length >= 2) {
+        setError('Вы не можете оставить больше двух заявок на подбор.');
         return;
+      }
+    } catch (err) {
+      setError('Ошибка при проверке количества заявок. Попробуйте позже.');
+      return;
     }
 
     setLoading(true);
@@ -71,7 +82,7 @@ const CustomRequestForm: React.FC<CustomRequestFormProps> = ({ onClose }) => {
         color: formData.color || undefined,
       });
       setSuccess(true);
-      setFormData({ make: '', model: '', year: '', minPrice: '', maxPrice: '', color: '', trim: '' }); // Reset form
+      setFormData({ make: '', model: '', year: '', minPrice: '', maxPrice: '', color: '', trim: '', condition: '' }); // Reset form
       setTimeout(() => {
         onClose(); // Close form after a delay
       }, 2500);
@@ -124,6 +135,19 @@ const CustomRequestForm: React.FC<CustomRequestFormProps> = ({ onClose }) => {
               <div className="col-12">
                 <label htmlFor="trim" className="form-label">Комплектация (описание)</label>
                 <textarea className="form-control" id="trim" name="trim" value={formData.trim} onChange={handleChange} required placeholder="Опишите желаемую комплектацию (например, двигатель, коробка, опции)" rows={3}></textarea>
+              </div>
+              <div className="col-12">
+                <label htmlFor="condition" className="form-label">Состояние автомобиля</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  id="condition"
+                  name="condition"
+                  value={formData.condition}
+                  onChange={handleChange}
+                  required
+                  placeholder="Например, новый, с пробегом, не битый и т.д."
+                />
               </div>
             </div>
 

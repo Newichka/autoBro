@@ -111,4 +111,87 @@ button {
     /* border: 1px solid #dee2e6; */ /* Optional: if you want a border */
 }
 
+/* --- Красивая форма добавления/редактирования авто --- */
+.add-car-form .form-label {
+  font-weight: 600;
+  color: #0d6efd;
+}
+.add-car-form .form-control, .add-car-form .form-select {
+  border-radius: 0.4rem;
+  border: 1px solid #bfc9d1;
+  box-shadow: none;
+  transition: border-color 0.2s;
+}
+.add-car-form .form-control:focus, .add-car-form .form-select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13,110,253,.15);
+}
+.add-car-form h5 {
+  font-size: 1.6rem;
+  color: #343a40;
+  margin-bottom: 1.2rem;
+}
+.add-car-form .btn-primary {
+  background: linear-gradient(90deg, #0d6efd 0%, #0dcaf0 100%);
+  border: none;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.add-car-form .btn-primary:hover {
+  background: linear-gradient(90deg, #0dcaf0 0%, #0d6efd 100%);
+}
+.add-car-form .btn-secondary {
+  background: #adb5bd;
+  border: none;
+}
+
+/* --- Стили для управления авто (админ-панель) --- */
+.admin-panel-table {
+  background: #fff;
+  border-radius: 0.7rem;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+.admin-panel-table th {
+  background: #f8f9fa;
+  font-weight: 700;
+  color: #495057;
+}
+.admin-panel-table td, .admin-panel-table th {
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+}
+.admin-panel-table tr {
+  transition: background 0.2s;
+}
+.admin-panel-table tr:hover {
+  background: #f1f3f5;
+}
+
+/* --- Анимация модальных окон --- */
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(-40px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes modalFadeOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(40px) scale(0.97); }
+}
+
+.animated-modal {
+  animation: modalFadeIn 0.45s cubic-bezier(.4,0,.2,1);
+}
+.animated-modal.closing {
+  animation: modalFadeOut 0.35s cubic-bezier(.4,0,.2,1) forwards;
+}
+
+/* --- Анимация затемнения фона --- */
+.animated-backdrop {
+  animation: modalFadeIn 0.35s cubic-bezier(.4,0,.2,1);
+}
+.animated-backdrop.closing {
+  animation: modalFadeOut 0.25s cubic-bezier(.4,0,.2,1) forwards;
+}
+
 

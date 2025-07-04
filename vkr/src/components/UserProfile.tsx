@@ -299,6 +299,24 @@ const UserProfile: React.FC = () => {
     }
   };
 
+  // Добавить функции для статуса custom_requests (аналогично AdminPanel)
+  const getCustomRequestStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case 'new': return 'bg-secondary';
+      case 'viewed': return 'bg-info';
+      case 'closed': return 'bg-success';
+      default: return 'bg-light text-dark';
+    }
+  };
+  const getCustomRequestStatusText = (status: string) => {
+    switch (status) {
+      case 'new': return 'Новая';
+      case 'viewed': return 'Просмотрена';
+      case 'closed': return 'Закрыта';
+      default: return status;
+    }
+  };
+
   if (!currentUser) {
     return (
       <div className="container mt-5">
@@ -503,8 +521,8 @@ const UserProfile: React.FC = () => {
                             {request.color && <div>Цвет: {request.color}</div>}
                           </td>
                           <td>
-                            <span className={`badge ${getStatusBadgeClass(request.status as OrderStatus)}`}>
-                              {getStatusText(request.status as OrderStatus)}
+                            <span className={`badge ${getCustomRequestStatusBadgeClass(request.status)}`}>
+                              {getCustomRequestStatusText(request.status)}
                             </span>
                           </td>
                           <td>

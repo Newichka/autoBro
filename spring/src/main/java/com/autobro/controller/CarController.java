@@ -4,10 +4,13 @@ import com.autobro.dto.ApiResponse;
 import com.autobro.dto.CarDTO;
 import com.autobro.dto.CarFilterDTO;
 import com.autobro.dto.CreateCarDTO;
+import com.autobro.dto.TechnicalSpecDTO;
 import com.autobro.model.Car;
 import com.autobro.model.Photo;
+import com.autobro.model.TechnicalSpec;
 import com.autobro.repository.BodyTypeRepository;
 import com.autobro.repository.ColorRepository;
+import com.autobro.repository.TechnicalSpecRepository;
 import com.autobro.service.CarService;
 import com.autobro.service.FileStorageService;
 import com.autobro.service.PhotoService;
@@ -39,6 +42,7 @@ public class CarController {
     private final PhotoService photoService;
     private final BodyTypeRepository bodyTypeRepository;
     private final ColorRepository colorRepository;
+    private final TechnicalSpecRepository technicalSpecRepository;
 
     @GetMapping("/{id}")
     @Operation(summary = "Получить информацию об автомобиле по ID")
@@ -75,14 +79,13 @@ public class CarController {
     }
 
     @PostMapping("/{id}/photos")
-    @Operation(summary = "Загрузить фотографии автомобиля")
-    public ResponseEntity<ApiResponse<List<String>>> uploadPhotos(
-            @Parameter(description = "ID автомобиля")
+    @Operation(summary = "Обновить фотографии автомобиля (удаляет старые, добавляет новые)")
+    public ResponseEntity<ApiResponse<List<String>>> updatePhotos(
             @PathVariable Long id,
-            @Parameter(description = "Файлы фотографий")
-            @RequestParam("files") List<MultipartFile> files) {
+            @RequestParam(value = "files") List<MultipartFile> files) {
+        carService.deleteAllPhotos(id);
         List<String> photoUrls = carService.uploadPhotos(id, files);
-        return ResponseEntity.ok(ApiResponse.success(photoUrls, "Фотографии успешно загружены"));
+        return ResponseEntity.ok(ApiResponse.success(photoUrls, "Фотографии успешно обновлены"));
     }
 
     @DeleteMapping("/{id}/photos/{photoId}")
@@ -201,6 +204,24 @@ public class CarController {
                         photoService.save(photoEntity);
                     }
                 }
+            }
+            
+            // Добавить:
+            if (dto.getTechnicalSpec() != null) {
+                TechnicalSpec spec = new TechnicalSpec();
+                spec.setCar(savedCar);
+                TechnicalSpecDTO specDTO = dto.getTechnicalSpec();
+                if (specDTO.getFuelType() != null) spec.setFuelType(specDTO.getFuelType());
+                if (specDTO.getEngineVolume() != null) spec.setEngineVolume(specDTO.getEngineVolume());
+                if (specDTO.getHorsePower() != null) spec.setHorsePower(specDTO.getHorsePower());
+                if (specDTO.getDriveType() != null) spec.setDriveType(specDTO.getDriveType());
+                if (specDTO.getTransmissionType() != null) spec.setTransmissionType(specDTO.getTransmissionType());
+                if (specDTO.getGears() != null) spec.setGears(specDTO.getGears());
+                if (specDTO.getEngineInfo() != null) spec.setEngineInfo(specDTO.getEngineInfo());
+                if (specDTO.getTransmissionInfo() != null) spec.setTransmissionInfo(specDTO.getTransmissionInfo());
+                TechnicalSpec savedSpec = technicalSpecRepository.save(spec);
+                savedCar.setTechnicalSpec(savedSpec);
+                carService.save(savedCar);
             }
             
             // Обновляем авто с фото
